@@ -7,6 +7,7 @@ import {
   IndexedTx,
   IndexedEvent,
   AccountInfo,
+  ValidatorSetResponse,
   RpcResponse,
 } from "./types";
 
@@ -83,5 +84,8 @@ export function createApi(network: NetworkConfig) {
 
     getLatestBlock: () =>
       rpcCall<BlockInfo>(id, "solen_getLatestBlock"),
+
+    getValidators: () =>
+      fetchExplorer<ValidatorSetResponse>(id, "api/validators"),
   };
 }

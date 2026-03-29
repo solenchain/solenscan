@@ -60,6 +60,20 @@ export interface AccountInfo {
   code_hash: string;
 }
 
+export interface ValidatorInfo {
+  id: string;
+  stake: string;
+  status: "Active" | "Jailed" | "Exiting";
+  missed_blocks: number;
+}
+
+export interface ValidatorSetResponse {
+  validators: ValidatorInfo[];
+  total_active_stake: string;
+  active_count: number;
+  total_count: number;
+}
+
 export interface RpcResponse<T> {
   jsonrpc: string;
   id: number;
