@@ -15,7 +15,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   const [networkId, setNetworkId] = useState<NetworkId>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("solenscan-network");
-      if (saved && saved in networks) return saved as NetworkId;
+      if (saved && saved in networks && networks[saved as NetworkId].enabled) return saved as NetworkId;
     }
     return DEFAULT_NETWORK;
   });

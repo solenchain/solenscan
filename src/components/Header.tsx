@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useNetwork } from "@/context/NetworkContext";
-import { NetworkId, networks } from "@/lib/networks";
+import { NetworkId, networks, enabledNetworks } from "@/lib/networks";
 import { SearchBar } from "./SearchBar";
 import { NetworkBanner } from "./NetworkBanner";
 
@@ -55,21 +55,33 @@ export function Header() {
               <div className="hidden sm:block">
                 <SearchBar />
               </div>
-              <select
-                value={networkId}
-                onChange={(e) => setNetwork(e.target.value as NetworkId)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                style={{
-                  borderLeftColor: networks[networkId].color,
-                  borderLeftWidth: 3,
-                }}
-              >
-                {Object.values(networks).map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {n.name}
-                  </option>
-                ))}
-              </select>
+              {enabledNetworks.length > 1 ? (
+                <select
+                  value={networkId}
+                  onChange={(e) => setNetwork(e.target.value as NetworkId)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  style={{
+                    borderLeftColor: networks[networkId].color,
+                    borderLeftWidth: 3,
+                  }}
+                >
+                  {enabledNetworks.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+                  style={{
+                    borderLeftColor: networks[networkId].color,
+                    borderLeftWidth: 3,
+                  }}
+                >
+                  {networks[networkId].name}
+                </span>
+              )}
               <button
                 className="md:hidden p-1.5 rounded-lg hover:bg-gray-100"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
