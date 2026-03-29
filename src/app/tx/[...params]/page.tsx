@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
 import { IndexedTx } from "@/lib/types";
-import { truncateHash, formatNumber, formatBalance, getTransferInfo, parseTransferEvent } from "@/lib/utils";
+import { truncateHash, formatNumber, formatBalance, getTransferInfo, parseTransferEvent, parseRewardEvent } from "@/lib/utils";
 import { CopyButton } from "@/components/CopyButton";
 import { Loading, ErrorMessage } from "@/components/Loading";
 
@@ -160,12 +160,17 @@ export default function TxDetailPage() {
           <div className="divide-y divide-gray-100">
             {tx.events.map((event, i) => {
               const transfer = event.topic === "transfer" ? parseTransferEvent(event.data) : null;
+              const reward = event.topic === "epoch_reward" ? parseRewardEvent(event.data) : null;
               return (
               <div key={i} className="px-6 py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                        event.topic === "epoch_reward"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-purple-50 text-purple-700"
+                      }`}>
                         {event.topic}
                       </span>
                       <span className="text-xs text-gray-400">Event #{i}</span>
@@ -199,7 +204,26 @@ export default function TxDetailPage() {
                         </div>
                       </div>
                     )}
-                    {!transfer && event.data && event.data !== "" && event.data !== "00" && (
+                    {reward && (
+                      <div className="mt-2 rounded-lg bg-amber-50 p-3 space-y-1.5">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 w-16">Validator:</span>
+                          <Link
+                            href={`/account/${reward.validator}`}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 font-mono"
+                          >
+                            {truncateHash(reward.validator, 12)}
+                          </Link>
+                          <CopyButton text={reward.validator} />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 w-16">Reward:</span>
+                          <span className="text-sm font-medium text-amber-700">{formatBalance(reward.amount)} SOLEN</span>
+                          <span className="text-xs text-gray-400 ml-1">(raw: {reward.amount})</span>
+                        </div>
+                      </div>
+                    )}
+                    {!transfer && !reward && event.data && event.data !== "" && event.data !== "00" && (
                       <div className="mt-2 rounded-lg bg-gray-50 p-3">
                         <span className="text-xs text-gray-500">Data:</span>
                         <p className="text-xs font-mono text-gray-700 mt-0.5 break-all">{event.data}</p>
