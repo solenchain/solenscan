@@ -76,6 +76,9 @@ export function createApi(network: NetworkConfig) {
     getBlockTxs: (blockHeight: number) =>
       fetchExplorer<IndexedTx[]>(id, `api/blocks/${blockHeight}/txs`),
 
+    getRecentTxs: (limit = 50) =>
+      fetchExplorer<IndexedTx[]>(id, `api/txs?limit=${limit}`),
+
     getAccountTxs: (account: string, limit = 20) =>
       fetchExplorer<IndexedTx[]>(id, `api/accounts/${account}/txs?limit=${limit}`),
 

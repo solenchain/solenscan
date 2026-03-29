@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
 import { IndexedTx } from "@/lib/types";
-import { truncateHash, formatNumber, formatGas } from "@/lib/utils";
+import { truncateHash, formatNumber, formatGas, formatBalance, getTransferInfo } from "@/lib/utils";
 import { CopyButton } from "@/components/CopyButton";
 import { Loading, ErrorMessage } from "@/components/Loading";
 
@@ -92,6 +92,29 @@ export default function TxDetailPage() {
           </Link>
           <CopyButton text={tx.sender} />
         </Row>
+        {(() => {
+          const transfer = getTransferInfo(tx.events);
+          if (!transfer) return null;
+          return (
+            <>
+              <Row label="To">
+                <Link
+                  href={`/account/${transfer.to}`}
+                  className="text-indigo-600 hover:text-indigo-800 font-mono text-sm"
+                >
+                  {transfer.to}
+                </Link>
+                <CopyButton text={transfer.to} />
+              </Row>
+              <Row label="Value">
+                <span className="text-lg font-semibold text-gray-900">
+                  {formatBalance(transfer.amount)} SOL
+                </span>
+                <span className="ml-2 text-xs text-gray-400">(raw: {transfer.amount})</span>
+              </Row>
+            </>
+          );
+        })()}
         <Row label="Nonce" value={formatNumber(tx.nonce)} />
         <Row label="Gas Used" value={`${formatNumber(tx.gas_used)} (${formatGas(tx.gas_used)})`} />
         {tx.error && (

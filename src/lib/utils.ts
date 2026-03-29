@@ -41,6 +41,35 @@ export function formatBalance(raw: string | number): string {
   return `${whole.toLocaleString()}.${fracStr}`;
 }
 
+export interface TransferInfo {
+  to: string;
+  amount: string;
+}
+
+export function parseTransferEvent(data: string): TransferInfo | null {
+  // Transfer event data: [recipient_id (32 bytes = 64 hex chars)][amount (16 bytes = 32 hex chars)]
+  if (data.length < 96) return null;
+  const to = data.slice(0, 64);
+  const amountHex = data.slice(64, 96);
+  // Amount is little-endian u128
+  const bytes = [];
+  for (let i = 0; i < amountHex.length; i += 2) {
+    bytes.push(parseInt(amountHex.slice(i, i + 2), 16));
+  }
+  // Convert LE bytes to bigint
+  let amount = BigInt(0);
+  for (let i = bytes.length - 1; i >= 0; i--) {
+    amount = (amount << BigInt(8)) | BigInt(bytes[i]);
+  }
+  return { to, amount: amount.toString() };
+}
+
+export function getTransferInfo(events: { topic: string; data: string }[]): TransferInfo | null {
+  const transferEvent = events.find((e) => e.topic === "transfer");
+  if (!transferEvent) return null;
+  return parseTransferEvent(transferEvent.data);
+}
+
 export function isContractAccount(codeHash: string): boolean {
   return codeHash !== "0".repeat(64) && codeHash !== "";
 }

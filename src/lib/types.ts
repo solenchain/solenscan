@@ -51,6 +51,7 @@ export interface IndexedEvent {
   tx_index: number;
   emitter: string;
   topic: string;
+  data: string;
 }
 
 export interface AccountInfo {
