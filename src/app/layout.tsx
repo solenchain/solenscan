@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SolenScan - Solen Blockchain Explorer",
   description: "Block explorer for the Solen blockchain network. View blocks, transactions, accounts, and events.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
