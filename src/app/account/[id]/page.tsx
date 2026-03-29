@@ -93,7 +93,7 @@ export default function AccountPage() {
             <p className="mt-1.5 text-2xl font-semibold text-gray-900">
               {formatBalance(account.balance)}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">SOL</p>
+            <p className="text-xs text-gray-400 mt-0.5">SOLEN</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Nonce</p>
@@ -158,7 +158,7 @@ export default function AccountPage() {
                   {isContract ? "Smart Account (has deployed code)" : "Standard Account (no code)"}
                 </DetailRow>
                 <DetailRow label="Balance (raw)" mono>{account.balance}</DetailRow>
-                <DetailRow label="Balance (formatted)">{formatBalance(account.balance)} SOL</DetailRow>
+                <DetailRow label="Balance (formatted)">{formatBalance(account.balance)} SOLEN</DetailRow>
                 <DetailRow label="Nonce">{formatNumber(account.nonce)}</DetailRow>
                 <DetailRow label="Code Hash" mono>{account.code_hash}</DetailRow>
               </div>

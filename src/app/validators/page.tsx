@@ -38,7 +38,7 @@ export default function ValidatorsPage() {
             <p className="mt-1.5 text-2xl font-semibold text-gray-900">
               {formatBalance(data.total_active_stake)}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">SOL</p>
+            <p className="text-xs text-gray-400 mt-0.5">SOLEN</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Quorum Threshold</p>
@@ -101,7 +101,7 @@ export default function ValidatorsPage() {
                           </Link>
                         </td>
                         <td className="px-6 py-4 font-medium text-gray-900">
-                          {formatBalance(v.stake)} SOL
+                          {formatBalance(v.stake)} SOLEN
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">

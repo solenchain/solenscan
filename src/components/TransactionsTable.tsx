@@ -60,7 +60,7 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
               <div className="text-right">
                 {transfer && (
                   <p className="text-sm font-medium text-gray-900">
-                    {formatBalance(transfer.amount)} SOL
+                    {formatBalance(transfer.amount)} SOLEN
                   </p>
                 )}
                 {tx.success ? (
@@ -141,7 +141,7 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                 </td>
                 <td className="py-3 pr-4 font-medium text-gray-900">
                   {transfer ? (
-                    <span>{formatBalance(transfer.amount)} SOL</span>
+                    <span>{formatBalance(transfer.amount)} SOLEN</span>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
