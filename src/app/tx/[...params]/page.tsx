@@ -6,27 +6,48 @@ import Link from "next/link";
 import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
 import { IndexedTx } from "@/lib/types";
-import { truncateHash, formatNumber, formatGas, formatBalance, getTransferInfo, parseTransferEvent } from "@/lib/utils";
+import { truncateHash, formatNumber, formatBalance, getTransferInfo, parseTransferEvent } from "@/lib/utils";
 import { CopyButton } from "@/components/CopyButton";
 import { Loading, ErrorMessage } from "@/components/Loading";
 
+function parseTxParams(segments: string[]): { height: number; index: number } | null {
+  // /tx/384/0
+  if (segments.length === 2) {
+    const height = Number(segments[0]);
+    const index = Number(segments[1]);
+    if (!isNaN(height) && !isNaN(index)) return { height, index };
+  }
+  // /tx/384-0
+  if (segments.length === 1) {
+    const match = segments[0].match(/^(\d+)-(\d+)$/);
+    if (match) return { height: Number(match[1]), index: Number(match[2]) };
+  }
+  return null;
+}
+
 export default function TxDetailPage() {
   const params = useParams();
-  const blockHeight = Number(params.height);
-  const txIndex = Number(params.index);
-  const { network } = useNetwork();
+  const segments = params.params as string[];
+  const txId = parseTxParams(segments);
 
+  const { network } = useNetwork();
   const [tx, setTx] = useState<IndexedTx | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!txId) {
+      setError(`Invalid transaction ID "${segments.join("/")}". Use format: block-index (e.g. 384-0)`);
+      setLoading(false);
+      return;
+    }
+
     const mounted = { current: true };
 
     async function fetchTx() {
       try {
         const api = createApi(network);
-        const result = await api.getTx(blockHeight, txIndex);
+        const result = await api.getTx(txId!.height, txId!.index);
         if (mounted.current) {
           setTx(result);
           setError(null);
@@ -43,7 +64,7 @@ export default function TxDetailPage() {
     setLoading(true);
     fetchTx();
     return () => { mounted.current = false; };
-  }, [network, blockHeight, txIndex]);
+  }, [network, txId?.height, txId?.index]);
 
   if (loading) return <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8"><Loading /></div>;
   if (error || !tx) {
@@ -61,6 +82,7 @@ export default function TxDetailPage() {
       </h1>
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden mb-6">
+        <Row label="Transaction ID" value={`${tx.block_height}-${tx.index}`} />
         <Row label="Status">
           {tx.success ? (
             <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-1 text-sm font-medium text-green-700 ring-1 ring-green-600/20">

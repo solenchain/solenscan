@@ -7,6 +7,7 @@ import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
 import { ChainStatus, RpcChainStatus, IndexedBlock, IndexedEvent } from "@/lib/types";
 import { formatNumber } from "@/lib/utils";
+import { resolveSearch } from "@/components/SearchBar";
 import { StatCard } from "@/components/StatCard";
 import { BlocksTable } from "@/components/BlocksTable";
 import { Loading, ErrorMessage } from "@/components/Loading";
@@ -90,8 +91,7 @@ export default function HomePage() {
               if (e.key === "Enter") {
                 const q = (e.target as HTMLInputElement).value.trim();
                 if (!q) return;
-                if (/^\d+$/.test(q)) window.location.href = `/block/${q}`;
-                else window.location.href = `/account/${q}`;
+                window.location.href = resolveSearch(q);
               }
             }}
           />

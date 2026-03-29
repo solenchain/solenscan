@@ -11,16 +11,7 @@ export function SearchBar() {
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
-
-    if (/^\d+$/.test(q)) {
-      router.push(`/block/${q}`);
-    } else if (/^(0x)?[a-fA-F0-9]{64}$/.test(q)) {
-      router.push(`/account/${q}`);
-    } else if (/^(0x)?[a-fA-F0-9]+$/.test(q)) {
-      router.push(`/account/${q}`);
-    } else {
-      router.push(`/account/${q}`);
-    }
+    router.push(resolveSearch(q));
     setQuery("");
   }
 
@@ -30,7 +21,7 @@ export function SearchBar() {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search by block height or account ID..."
+        placeholder="Search by block, tx (384-0), or account..."
         className="w-full sm:w-80 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
       />
       <button
@@ -43,4 +34,17 @@ export function SearchBar() {
       </button>
     </form>
   );
+}
+
+export function resolveSearch(q: string): string {
+  // Transaction ID: 384-0
+  if (/^\d+-\d+$/.test(q)) {
+    return `/tx/${q}`;
+  }
+  // Block height: pure number
+  if (/^\d+$/.test(q)) {
+    return `/block/${q}`;
+  }
+  // Account ID: hex string
+  return `/account/${q}`;
 }
