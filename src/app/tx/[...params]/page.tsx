@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
 import { IndexedTx } from "@/lib/types";
-import { truncateHash, formatNumber, formatBalance, getTransferInfo, parseTransferEvent, parseRewardEvent } from "@/lib/utils";
+import { truncateHash, formatNumber, formatBalance, getTransferInfo, parseTransferEvent, parseRewardEvent, parseStakeEvent } from "@/lib/utils";
 import { CopyButton } from "@/components/CopyButton";
 import { Loading, ErrorMessage } from "@/components/Loading";
 
@@ -161,6 +161,8 @@ export default function TxDetailPage() {
             {tx.events.map((event, i) => {
               const transfer = event.topic === "transfer" ? parseTransferEvent(event.data) : null;
               const reward = event.topic === "epoch_reward" ? parseRewardEvent(event.data) : null;
+              const stake = (event.topic === "delegate" || event.topic === "undelegate") ? parseStakeEvent(event.data) : null;
+              const isDelegate = event.topic === "delegate";
               return (
               <div key={i} className="px-6 py-4">
                 <div className="flex items-start justify-between gap-4">
@@ -223,7 +225,30 @@ export default function TxDetailPage() {
                         </div>
                       </div>
                     )}
-                    {!transfer && !reward && event.data && event.data !== "" && event.data !== "00" && (
+                    {stake && (
+                      <div className={`mt-2 rounded-lg p-3 space-y-1.5 ${isDelegate ? "bg-blue-50" : "bg-orange-50"}`}>
+                        {stake.validator && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-500 w-16">Validator:</span>
+                            <Link
+                              href={`/account/${stake.validator}`}
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-mono"
+                            >
+                              {truncateHash(stake.validator, 12)}
+                            </Link>
+                            <CopyButton text={stake.validator} />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 w-16">Amount:</span>
+                          <span className={`text-sm font-medium ${isDelegate ? "text-blue-700" : "text-orange-700"}`}>
+                            {isDelegate ? "+" : "-"}{formatBalance(stake.amount)} SOLEN
+                          </span>
+                          <span className="text-xs text-gray-400 ml-1">(raw: {stake.amount})</span>
+                        </div>
+                      </div>
+                    )}
+                    {!transfer && !reward && !stake && event.data && event.data !== "" && event.data !== "00" && (
                       <div className="mt-2 rounded-lg bg-gray-50 p-3">
                         <span className="text-xs text-gray-500">Data:</span>
                         <p className="text-xs font-mono text-gray-700 mt-0.5 break-all">{event.data}</p>

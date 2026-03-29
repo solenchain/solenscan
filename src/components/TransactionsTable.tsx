@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { IndexedTx } from "@/lib/types";
-import { truncateHash, formatNumber, formatGas, formatBalance, getTransferInfo, parseRewardEvent } from "@/lib/utils";
+import { truncateHash, formatNumber, formatGas, formatBalance, getTransferInfo, parseRewardEvent, parseStakeEvent } from "@/lib/utils";
 
 interface TransactionsTableProps {
   transactions: IndexedTx[];
@@ -18,6 +18,10 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
           const rewardEvent = tx.events.find((e) => e.topic === "epoch_reward");
           const reward = rewardEvent ? parseRewardEvent(rewardEvent.data) : null;
           const isReward = reward !== null;
+          const stakeEvent = tx.events.find((e) => e.topic === "delegate" || e.topic === "undelegate");
+          const stake = stakeEvent ? parseStakeEvent(stakeEvent.data) : null;
+          const isStake = stake !== null;
+          const isDelegate = stakeEvent?.topic === "delegate";
           return (
             <div
               key={`${tx.block_height}-${tx.index}`}
@@ -92,7 +96,12 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                     +{formatBalance(reward.amount)} SOLEN
                   </p>
                 )}
-                {!isReward && (tx.success ? (
+                {stake && (
+                  <p className={`text-sm font-medium ${isDelegate ? "text-blue-700" : "text-orange-700"}`}>
+                    {isDelegate ? "Stake " : "Unstake "}{formatBalance(stake.amount)} SOLEN
+                  </p>
+                )}
+                {!isReward && !isStake && (tx.success ? (
                   <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-600/20">
                     Success
                   </span>
@@ -129,6 +138,9 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
             const transfer = getTransferInfo(tx.events);
             const rewardEvent = tx.events.find((e) => e.topic === "epoch_reward");
             const reward = rewardEvent ? parseRewardEvent(rewardEvent.data) : null;
+            const stakeEvent = tx.events.find((e) => e.topic === "delegate" || e.topic === "undelegate");
+            const stake = stakeEvent ? parseStakeEvent(stakeEvent.data) : null;
+            const isDelegate = stakeEvent?.topic === "delegate";
             return (
               <tr
                 key={`${tx.block_height}-${tx.index}`}
@@ -188,6 +200,10 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                     <span className="text-amber-700">+{formatBalance(reward.amount)} SOLEN</span>
                   ) : transfer ? (
                     <span className="text-gray-900">{formatBalance(transfer.amount)} SOLEN</span>
+                  ) : stake ? (
+                    <span className={isDelegate ? "text-blue-700" : "text-orange-700"}>
+                      {isDelegate ? "Stake " : "Unstake "}{formatBalance(stake.amount)} SOLEN
+                    </span>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
