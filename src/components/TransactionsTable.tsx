@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { IndexedTx } from "@/lib/types";
-import { truncateHash, formatNumber, formatGas, formatBalance, getTransferInfo } from "@/lib/utils";
+import { truncateHash, formatNumber, formatGas, formatBalance, getTransferInfo, parseRewardEvent } from "@/lib/utils";
 
 interface TransactionsTableProps {
   transactions: IndexedTx[];
@@ -15,6 +15,9 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
       <div className="divide-y divide-gray-100">
         {transactions.map((tx) => {
           const transfer = getTransferInfo(tx.events);
+          const rewardEvent = tx.events.find((e) => e.topic === "epoch_reward");
+          const reward = rewardEvent ? parseRewardEvent(rewardEvent.data) : null;
+          const isReward = reward !== null;
           return (
             <div
               key={`${tx.block_height}-${tx.index}`}
@@ -22,9 +25,11 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
             >
               <div className="flex items-center gap-3">
                 <div className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-mono ${
-                  tx.success ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                  isReward
+                    ? "bg-amber-50 text-amber-600"
+                    : tx.success ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
                 }`}>
-                  Tx
+                  {isReward ? "⛏" : "Tx"}
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
@@ -34,24 +39,43 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                     >
                       #{formatNumber(tx.block_height)}-{tx.index}
                     </Link>
+                    {isReward && (
+                      <span className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                        Reward
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-400">
-                    <span>From</span>
-                    <Link
-                      href={`/account/${tx.sender}`}
-                      className="hover:text-indigo-600 font-mono"
-                    >
-                      {truncateHash(tx.sender, 4)}
-                    </Link>
-                    {transfer && (
+                    {isReward ? (
                       <>
                         <span>To</span>
                         <Link
-                          href={`/account/${transfer.to}`}
+                          href={`/account/${reward.validator}`}
                           className="hover:text-indigo-600 font-mono"
                         >
-                          {truncateHash(transfer.to, 4)}
+                          {truncateHash(reward.validator, 4)}
                         </Link>
+                      </>
+                    ) : (
+                      <>
+                        <span>From</span>
+                        <Link
+                          href={`/account/${tx.sender}`}
+                          className="hover:text-indigo-600 font-mono"
+                        >
+                          {truncateHash(tx.sender, 4)}
+                        </Link>
+                        {transfer && (
+                          <>
+                            <span>To</span>
+                            <Link
+                              href={`/account/${transfer.to}`}
+                              className="hover:text-indigo-600 font-mono"
+                            >
+                              {truncateHash(transfer.to, 4)}
+                            </Link>
+                          </>
+                        )}
                       </>
                     )}
                   </div>
@@ -63,7 +87,12 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                     {formatBalance(transfer.amount)} SOLEN
                   </p>
                 )}
-                {tx.success ? (
+                {reward && (
+                  <p className="text-sm font-medium text-amber-700">
+                    +{formatBalance(reward.amount)} SOLEN
+                  </p>
+                )}
+                {!isReward && (tx.success ? (
                   <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-600/20">
                     Success
                   </span>
@@ -71,7 +100,7 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                   <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-600/20">
                     Failed
                   </span>
-                )}
+                ))}
               </div>
             </div>
           );
@@ -98,6 +127,8 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
         <tbody>
           {transactions.map((tx) => {
             const transfer = getTransferInfo(tx.events);
+            const rewardEvent = tx.events.find((e) => e.topic === "epoch_reward");
+            const reward = rewardEvent ? parseRewardEvent(rewardEvent.data) : null;
             return (
               <tr
                 key={`${tx.block_height}-${tx.index}`}
@@ -120,15 +151,28 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                   </Link>
                 </td>
                 <td className="py-3 pr-4">
-                  <Link
-                    href={`/account/${tx.sender}`}
-                    className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
-                  >
-                    {truncateHash(tx.sender)}
-                  </Link>
+                  {reward ? (
+                    <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      Staking Pool
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/account/${tx.sender}`}
+                      className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
+                    >
+                      {truncateHash(tx.sender)}
+                    </Link>
+                  )}
                 </td>
                 <td className="py-3 pr-4">
-                  {transfer ? (
+                  {reward ? (
+                    <Link
+                      href={`/account/${reward.validator}`}
+                      className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
+                    >
+                      {truncateHash(reward.validator)}
+                    </Link>
+                  ) : transfer ? (
                     <Link
                       href={`/account/${transfer.to}`}
                       className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
@@ -139,9 +183,11 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                     <span className="text-gray-400 text-xs">-</span>
                   )}
                 </td>
-                <td className="py-3 pr-4 font-medium text-gray-900">
-                  {transfer ? (
-                    <span>{formatBalance(transfer.amount)} SOLEN</span>
+                <td className="py-3 pr-4 font-medium">
+                  {reward ? (
+                    <span className="text-amber-700">+{formatBalance(reward.amount)} SOLEN</span>
+                  ) : transfer ? (
+                    <span className="text-gray-900">{formatBalance(transfer.amount)} SOLEN</span>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
