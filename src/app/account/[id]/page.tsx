@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
@@ -19,7 +19,7 @@ export default function AccountPage() {
   const [txs, setTxs] = useState<IndexedTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"txs" | "info">("txs");
+  const [activeTab, setActiveTab] = useState<"txs" | "contract" | "info">("txs");
 
   useEffect(() => {
     let mounted = true;
@@ -124,6 +124,7 @@ export default function AccountPage() {
           <div className="flex gap-0">
             {[
               { id: "txs" as const, label: `Transactions (${txs.length})` },
+              ...(isContract ? [{ id: "contract" as const, label: "Contract" }] : []),
               { id: "info" as const, label: "Details" },
             ].map((tab) => (
               <button
@@ -150,6 +151,8 @@ export default function AccountPage() {
                 No transactions found for this account
               </p>
             )
+          ) : activeTab === "contract" ? (
+            <ContractTab contractId={accountId} />
           ) : (
             account && (
               <div className="space-y-0">
@@ -168,6 +171,132 @@ export default function AccountPage() {
       </div>
     </div>
   );
+}
+
+function ContractTab({ contractId }: { contractId: string }) {
+  const { network } = useNetwork();
+  const [method, setMethod] = useState("total_supply");
+  const [args, setArgs] = useState("");
+  const [result, setResult] = useState<{ success: boolean; return_data: string; gas_used: number; error?: string } | null>(null);
+  const [querying, setQuerying] = useState(false);
+
+  // Auto-query common SRC-20 methods on load.
+  const [tokenInfo, setTokenInfo] = useState<{ totalSupply: string; } | null>(null);
+
+  useEffect(() => {
+    const api = createApi(network);
+    api.callView(contractId, "total_supply").then((res) => {
+      if (res.success && res.return_data.length >= 32) {
+        const bytes = hexToBytes(res.return_data);
+        const supply = bytesToU128(bytes);
+        setTokenInfo({ totalSupply: supply.toString() });
+      }
+    }).catch(() => {});
+  }, [network, contractId]);
+
+  const handleQuery = async () => {
+    setQuerying(true);
+    setResult(null);
+    try {
+      const api = createApi(network);
+      const res = await api.callView(contractId, method, args || undefined);
+      setResult(res);
+    } catch (e) {
+      setResult({ success: false, return_data: "", gas_used: 0, error: e instanceof Error ? e.message : "Query failed" });
+    } finally {
+      setQuerying(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Token info summary */}
+      {tokenInfo && (
+        <div className="rounded-lg bg-purple-50 border border-purple-200 p-4">
+          <h3 className="text-sm font-semibold text-purple-900 mb-2">SRC-20 Token</h3>
+          <div className="text-sm text-purple-700">
+            <span className="text-gray-500">Total Supply:</span>{" "}
+            <span className="font-mono font-medium">{formatNumber(Number(tokenInfo.totalSupply))}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Read contract */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Read Contract</h3>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select
+            value={method}
+            onChange={(e) => setMethod(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="total_supply">total_supply()</option>
+            <option value="balance_of">balance_of(account)</option>
+            <option value="allowance">allowance(owner, spender)</option>
+          </select>
+          <input
+            type="text"
+            value={args}
+            onChange={(e) => setArgs(e.target.value)}
+            placeholder="Args (hex) — e.g., account ID for balance_of"
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            onClick={handleQuery}
+            disabled={querying}
+            className="rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-400 text-white px-4 py-2 text-sm font-medium transition-colors"
+          >
+            {querying ? "Querying..." : "Query"}
+          </button>
+        </div>
+
+        {result && (
+          <div className={`mt-3 rounded-lg border p-3 text-sm ${
+            result.success
+              ? "bg-green-50 border-green-200"
+              : "bg-red-50 border-red-200"
+          }`}>
+            {result.success ? (
+              <div className="space-y-1">
+                <div>
+                  <span className="text-gray-500">Return data:</span>{" "}
+                  <span className="font-mono text-gray-900">{result.return_data}</span>
+                </div>
+                {result.return_data.length === 32 && (
+                  <div>
+                    <span className="text-gray-500">As u128:</span>{" "}
+                    <span className="font-mono text-gray-900 font-medium">
+                      {bytesToU128(hexToBytes(result.return_data)).toString()}
+                    </span>
+                  </div>
+                )}
+                <div className="text-gray-400">Gas used: {result.gas_used}</div>
+              </div>
+            ) : (
+              <div className="text-red-700">{result.error}</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const bytes = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < clean.length; i += 2) {
+    bytes[i / 2] = parseInt(clean.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function bytesToU128(bytes: Uint8Array): bigint {
+  let value = BigInt(0);
+  for (let i = Math.min(bytes.length, 16) - 1; i >= 0; i--) {
+    value = (value << BigInt(8)) | BigInt(bytes[i]);
+  }
+  return value;
 }
 
 function DetailRow({
