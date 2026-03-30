@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
 import { AccountInfo, IndexedTx } from "@/lib/types";
@@ -194,6 +195,7 @@ function ContractTab({ contractId }: { contractId: string }) {
   const [result, setResult] = useState<{ success: boolean; return_data: string; gas_used: number; error?: string } | null>(null);
   const [querying, setQuerying] = useState(false);
   const [tokenMeta, setTokenMeta] = useState<TokenMeta | null>(null);
+  const [owner, setOwner] = useState<string | null>(null);
 
   // Probe contract for ABI and token metadata on load.
   useEffect(() => {
@@ -229,6 +231,13 @@ function ContractTab({ contractId }: { contractId: string }) {
 
       if (totalSupply) {
         setTokenMeta({ name, symbol, decimals, totalSupply });
+      }
+    });
+
+    // Try to get contract owner.
+    api.callView(contractId, "owner").catch(() => null).then((res) => {
+      if (res?.success && res.return_data.length === 64) {
+        setOwner(res.return_data);
       }
     });
   }, [network, contractId]);
@@ -284,6 +293,16 @@ function ContractTab({ contractId }: { contractId: string }) {
               <p className="font-medium text-purple-900">{formatNumber(Number(tokenMeta.totalSupply))}</p>
             </div>
           </div>
+          {owner && (
+            <div className="mt-3 pt-3 border-t border-purple-200 text-sm">
+              <span className="text-gray-500 text-xs">Owner</span>
+              <p className="font-mono text-xs mt-0.5">
+                <Link href={`/account/${owner}`} className="text-indigo-600 hover:text-indigo-800">
+                  {owner}
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
       )}
 
