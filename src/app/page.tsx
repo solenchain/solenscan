@@ -6,7 +6,7 @@ import { usePolling } from "@/hooks/useApi";
 import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
 import { ChainStatus, RpcChainStatus, IndexedBlock, IndexedTx } from "@/lib/types";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, formatBalance } from "@/lib/utils";
 import { resolveSearch } from "@/components/SearchBar";
 import { StatCard } from "@/components/StatCard";
 import { BlocksTable } from "@/components/BlocksTable";
@@ -76,29 +76,50 @@ export default function HomePage() {
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
       {/* Hero search section */}
       <div className="mb-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-800 p-6 sm:p-8 text-white">
-        <h1 className="text-xl sm:text-2xl font-bold mb-1">
-          Solen Blockchain Explorer
-        </h1>
-        <p className="text-indigo-200 text-sm mb-4">
-          Search blocks, transactions, accounts, and events on{" "}
-          <span className="font-medium text-white">{network.name}</span>
-        </p>
-        <div className="relative max-w-xl">
-          <input
-            type="text"
-            placeholder="Search by block height, account ID, or transaction..."
-            className="w-full rounded-xl bg-white/10 backdrop-blur border border-white/20 px-4 py-3 text-sm text-white placeholder-indigo-200 focus:outline-none focus:ring-2 focus:ring-white/50"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const q = (e.target as HTMLInputElement).value.trim();
-                if (!q) return;
-                window.location.href = resolveSearch(q);
-              }
-            }}
-          />
-          <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+          <div className="flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold mb-1">
+              Solen Blockchain Explorer
+            </h1>
+            <p className="text-indigo-200 text-sm mb-4">
+              Search blocks, transactions, accounts, and events on{" "}
+              <span className="font-medium text-white">{network.name}</span>
+            </p>
+            <div className="relative max-w-xl">
+              <input
+                type="text"
+                placeholder="Search by block height, account ID, or transaction..."
+                className="w-full rounded-xl bg-white/10 backdrop-blur border border-white/20 px-4 py-3 text-sm text-white placeholder-indigo-200 focus:outline-none focus:ring-2 focus:ring-white/50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const q = (e.target as HTMLInputElement).value.trim();
+                    if (!q) return;
+                    window.location.href = resolveSearch(q);
+                  }
+                }}
+              />
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+
+          {chainStatus && chainStatus.total_allocation !== "0" && (
+            <div className="flex flex-row lg:flex-col gap-4 lg:gap-3 lg:text-right">
+              <div>
+                <div className="text-indigo-200 text-xs uppercase tracking-wide">Total Allocation</div>
+                <div className="text-lg sm:text-xl font-bold">
+                  {formatBalance(chainStatus.total_allocation)} <span className="text-sm font-normal text-indigo-200">SOLEN</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-indigo-200 text-xs uppercase tracking-wide">Circulating Supply</div>
+                <div className="text-lg sm:text-xl font-bold">
+                  {formatBalance(chainStatus.total_circulation)} <span className="text-sm font-normal text-indigo-200">SOLEN</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

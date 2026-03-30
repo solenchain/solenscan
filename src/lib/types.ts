@@ -9,6 +9,8 @@ export interface RpcChainStatus {
   height: number;
   latest_state_root: string;
   pending_ops: number;
+  total_allocation: string;
+  total_circulation: string;
 }
 
 export interface IndexedBlock {
