@@ -206,12 +206,16 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
                 </td>
                 <td className="py-3 pr-4">
                   {reward ? (
-                    <Link
-                      href={`/account/${reward.validator}`}
-                      className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
-                    >
-                      {truncateHash(reward.validator)}
-                    </Link>
+                    accountFilter ? (
+                      <Link
+                        href={`/account/${accountFilter}`}
+                        className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
+                      >
+                        {truncateHash(accountFilter)}
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-amber-600">{rewardCount} recipients</span>
+                    )
                   ) : transfer ? (
                     <Link
                       href={`/account/${transfer.to}`}
