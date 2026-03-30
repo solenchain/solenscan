@@ -61,8 +61,8 @@ export function createApi(network: NetworkConfig) {
     getChainStatus: () =>
       rpcCall<RpcChainStatus>(id, "solen_chainStatus"),
 
-    getBlocks: (limit = 20) =>
-      fetchExplorer<IndexedBlock[]>(id, `api/blocks?limit=${limit}`),
+    getBlocks: (limit = 20, offset = 0) =>
+      fetchExplorer<IndexedBlock[]>(id, `api/blocks?limit=${limit}&offset=${offset}`),
 
     getBlock: (height: number) =>
       fetchExplorer<IndexedBlock>(id, `api/blocks/${height}`),
@@ -76,14 +76,14 @@ export function createApi(network: NetworkConfig) {
     getBlockTxs: (blockHeight: number) =>
       fetchExplorer<IndexedTx[]>(id, `api/blocks/${blockHeight}/txs`),
 
-    getRecentTxs: (limit = 50) =>
-      fetchExplorer<IndexedTx[]>(id, `api/txs?limit=${limit}`),
+    getRecentTxs: (limit = 50, offset = 0) =>
+      fetchExplorer<IndexedTx[]>(id, `api/txs?limit=${limit}&offset=${offset}`),
 
-    getAccountTxs: (account: string, limit = 20) =>
-      fetchExplorer<IndexedTx[]>(id, `api/accounts/${account}/txs?limit=${limit}`),
+    getAccountTxs: (account: string, limit = 20, offset = 0) =>
+      fetchExplorer<IndexedTx[]>(id, `api/accounts/${account}/txs?limit=${limit}&offset=${offset}`),
 
-    getEvents: (limit = 20) =>
-      fetchExplorer<IndexedEvent[]>(id, `api/events?limit=${limit}`),
+    getEvents: (limit = 20, offset = 0) =>
+      fetchExplorer<IndexedEvent[]>(id, `api/events?limit=${limit}&offset=${offset}`),
 
     getAccount: (accountId: string) =>
       rpcCall<AccountInfo>(id, "solen_getAccount", { account_id: accountId }),

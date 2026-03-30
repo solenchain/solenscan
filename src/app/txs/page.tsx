@@ -1,18 +1,50 @@
 "use client";
 
-import { useCallback } from "react";
-import { usePolling } from "@/hooks/useApi";
+import { useState, useEffect } from "react";
+import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
 import { IndexedTx } from "@/lib/types";
 import { TransactionsTable } from "@/components/TransactionsTable";
+import { Pagination } from "@/components/Pagination";
 import { Loading, ErrorMessage } from "@/components/Loading";
 
+const PAGE_SIZE = 25;
+
 export default function TransactionsPage() {
-  const fetcher = useCallback(
-    (api: ReturnType<typeof createApi>) => api.getRecentTxs(50),
-    []
-  );
-  const { data: txs, loading, error } = usePolling<IndexedTx[]>(fetcher, 5000);
+  const { network } = useNetwork();
+  const [txs, setTxs] = useState<IndexedTx[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const api = createApi(network);
+
+    async function fetch() {
+      try {
+        const [data, status] = await Promise.all([
+          api.getRecentTxs(PAGE_SIZE, page * PAGE_SIZE),
+          api.getStatus(),
+        ]);
+        if (mounted) {
+          setTxs(data);
+          setTotal(status.total_txs);
+          setError(null);
+        }
+      } catch (e) {
+        if (mounted) setError(e instanceof Error ? e.message : "Failed to load");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    setLoading(true);
+    fetch();
+    const id = setInterval(fetch, 5000);
+    return () => { mounted = false; clearInterval(id); };
+  }, [network, page]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
@@ -20,14 +52,25 @@ export default function TransactionsPage() {
 
       {error && <ErrorMessage message={error} />}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        {loading && !txs ? (
-          <Loading />
-        ) : txs && txs.length > 0 ? (
-          <TransactionsTable transactions={txs} />
-        ) : (
-          <p className="py-8 text-center text-gray-400">No transactions found</p>
-        )}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="p-6">
+          {loading && txs.length === 0 ? (
+            <Loading />
+          ) : txs.length > 0 ? (
+            <TransactionsTable transactions={txs} />
+          ) : (
+            <p className="py-8 text-center text-gray-400">No transactions found</p>
+          )}
+        </div>
+        <div className="border-t border-gray-100 px-4">
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            hasMore={txs.length === PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        </div>
       </div>
     </div>
   );
