@@ -235,7 +235,11 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
                   {reward ? (
                     <span className="text-amber-700" title={`${rewardCount} payouts`}>+{formatBalance(reward.amount)} SOLEN</span>
                   ) : transfer ? (
-                    <span className="text-gray-900">{formatBalance(transfer.amount)} SOLEN</span>
+                    <span className={transfer.tokenContract ? "text-purple-700" : "text-gray-900"}>
+                      {transfer.tokenContract
+                        ? `${formatNumber(Number(transfer.amount))} tokens`
+                        : `${formatBalance(transfer.amount)} SOLEN`}
+                    </span>
                   ) : stake ? (
                     <span className={isDelegate ? "text-blue-700" : "text-orange-700"}>
                       {isDelegate ? "Stake " : "Unstake "}{formatBalance(stake.amount)} SOLEN
