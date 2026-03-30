@@ -15,9 +15,17 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
       <div className="divide-y divide-gray-100">
         {transactions.map((tx) => {
           const transfer = getTransferInfo(tx.events);
-          const rewardEvent = tx.events.find((e) => e.topic === "epoch_reward");
-          const reward = rewardEvent ? parseRewardEvent(rewardEvent.data) : null;
-          const isReward = reward !== null;
+
+          // Sum ALL reward events (epoch_reward + delegator_reward) in this transaction.
+          const rewardEvents = tx.events.filter((e) => e.topic === "epoch_reward" || e.topic === "delegator_reward");
+          const totalRewardAmount = rewardEvents.reduce((sum, e) => {
+            const parsed = parseRewardEvent(e.data);
+            return sum + (parsed ? BigInt(parsed.amount) : BigInt(0));
+          }, BigInt(0));
+          const isReward = rewardEvents.length > 0;
+          const reward = isReward ? { validator: "", amount: totalRewardAmount.toString() } : null;
+          const rewardCount = rewardEvents.length;
+
           const stakeEvent = tx.events.find((e) => e.topic === "delegate" || e.topic === "undelegate");
           const stake = stakeEvent ? parseStakeEvent(stakeEvent.data) : null;
           const isStake = stake !== null;
@@ -92,9 +100,14 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                   </p>
                 )}
                 {reward && (
-                  <p className="text-sm font-medium text-amber-700">
-                    +{formatBalance(reward.amount)} SOLEN
-                  </p>
+                  <div>
+                    <p className="text-sm font-medium text-amber-700">
+                      +{formatBalance(reward.amount)} SOLEN
+                    </p>
+                    {rewardCount > 1 && (
+                      <p className="text-xs text-gray-400">{rewardCount} payouts</p>
+                    )}
+                  </div>
                 )}
                 {stake && (
                   <p className={`text-sm font-medium ${isDelegate ? "text-blue-700" : "text-orange-700"}`}>
@@ -136,8 +149,15 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
         <tbody>
           {transactions.map((tx) => {
             const transfer = getTransferInfo(tx.events);
-            const rewardEvent = tx.events.find((e) => e.topic === "epoch_reward");
-            const reward = rewardEvent ? parseRewardEvent(rewardEvent.data) : null;
+
+            const rewardEvents = tx.events.filter((e) => e.topic === "epoch_reward" || e.topic === "delegator_reward");
+            const totalRewardAmount = rewardEvents.reduce((sum, e) => {
+              const parsed = parseRewardEvent(e.data);
+              return sum + (parsed ? BigInt(parsed.amount) : BigInt(0));
+            }, BigInt(0));
+            const reward = rewardEvents.length > 0 ? { validator: "", amount: totalRewardAmount.toString() } : null;
+            const rewardCount = rewardEvents.length;
+
             const stakeEvent = tx.events.find((e) => e.topic === "delegate" || e.topic === "undelegate");
             const stake = stakeEvent ? parseStakeEvent(stakeEvent.data) : null;
             const isDelegate = stakeEvent?.topic === "delegate";
@@ -197,7 +217,7 @@ export function TransactionsTable({ transactions, compact }: TransactionsTablePr
                 </td>
                 <td className="py-3 pr-4 font-medium">
                   {reward ? (
-                    <span className="text-amber-700">+{formatBalance(reward.amount)} SOLEN</span>
+                    <span className="text-amber-700" title={`${rewardCount} payouts`}>+{formatBalance(reward.amount)} SOLEN</span>
                   ) : transfer ? (
                     <span className="text-gray-900">{formatBalance(transfer.amount)} SOLEN</span>
                   ) : stake ? (
