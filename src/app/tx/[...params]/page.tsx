@@ -10,6 +10,36 @@ import { truncateHash, formatNumber, formatBalance, getTransferInfo, parseTransf
 import { CopyButton } from "@/components/CopyButton";
 import { Loading, ErrorMessage } from "@/components/Loading";
 
+const tokenSymbolCache: Record<string, string> = {};
+
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const bytes = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < clean.length; i += 2) {
+    bytes[i / 2] = parseInt(clean.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function TokenSymbol({ contractId }: { contractId: string }) {
+  const { network } = useNetwork();
+  const [symbol, setSymbol] = useState(tokenSymbolCache[contractId] || "");
+
+  useEffect(() => {
+    if (tokenSymbolCache[contractId]) { setSymbol(tokenSymbolCache[contractId]); return; }
+    const api = createApi(network);
+    api.callView(contractId, "symbol").then((res) => {
+      if (res.success) {
+        const sym = new TextDecoder().decode(hexToBytes(res.return_data));
+        tokenSymbolCache[contractId] = sym;
+        setSymbol(sym);
+      }
+    }).catch(() => {});
+  }, [contractId, network]);
+
+  return <>{symbol || "tokens"}</>;
+}
+
 function parseTxParams(segments: string[]): { height: number; index: number } | null {
   // /tx/384/0
   if (segments.length === 2) {
@@ -132,7 +162,7 @@ export default function TxDetailPage() {
                 {transfer.tokenContract ? (
                   <>
                     <span className="text-lg font-semibold text-purple-700">
-                      {formatNumber(Number(transfer.amount))}
+                      {formatNumber(Number(transfer.amount))} <TokenSymbol contractId={transfer.tokenContract} />
                     </span>
                     <span className="ml-2 text-sm text-gray-500">
                       via contract{" "}
@@ -222,7 +252,7 @@ export default function TxDetailPage() {
                           <span className="text-xs text-gray-500 w-16">Amount:</span>
                           {transfer.tokenContract ? (
                             <>
-                              <span className="text-sm font-medium text-purple-700">{formatNumber(Number(transfer.amount))} tokens</span>
+                              <span className="text-sm font-medium text-purple-700">{formatNumber(Number(transfer.amount))} <TokenSymbol contractId={transfer.tokenContract} /></span>
                               <span className="text-xs text-gray-400 ml-1">(contract: {truncateHash(transfer.tokenContract, 6)})</span>
                             </>
                           ) : (
