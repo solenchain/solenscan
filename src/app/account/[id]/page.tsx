@@ -144,7 +144,7 @@ export default function AccountPage() {
         <div className="p-6">
           {activeTab === "txs" ? (
             txs.length > 0 ? (
-              <TransactionsTable transactions={txs} accountFilter={id as string} />
+              <TransactionsTable transactions={txs} accountFilter={accountId} />
             ) : (
               <p className="py-8 text-center text-gray-400">
                 No transactions found for this account
