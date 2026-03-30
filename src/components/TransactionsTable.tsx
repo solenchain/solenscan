@@ -7,8 +7,8 @@ import { createApi } from "@/lib/api";
 import { IndexedTx } from "@/lib/types";
 import { truncateHash, formatNumber, formatGas, formatBalance, getTransferInfo, parseRewardEvent, parseStakeEvent } from "@/lib/utils";
 
-// Cache token names by contract address.
-const tokenNameCache: Record<string, string | null> = {};
+// Global cache for token symbols.
+const tokenSymbolCache: Record<string, string> = {};
 
 function hexToBytes(hex: string): Uint8Array {
   const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
@@ -19,36 +19,32 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
-function useTokenNames(contractIds: string[]) {
+function TokenAmount({ transfer }: { transfer: { amount: string; tokenContract?: string } }) {
   const { network } = useNetwork();
-  const [, forceUpdate] = useState(0);
+  const [symbol, setSymbol] = useState(
+    transfer.tokenContract ? tokenSymbolCache[transfer.tokenContract] || "" : ""
+  );
 
   useEffect(() => {
-    const unknown = contractIds.filter((id) => id && tokenNameCache[id] === undefined);
-    if (unknown.length === 0) return;
-
-    // Mark as loading to prevent duplicate fetches.
-    unknown.forEach((id) => { tokenNameCache[id] = null; });
-
+    if (!transfer.tokenContract) return;
+    if (tokenSymbolCache[transfer.tokenContract]) {
+      setSymbol(tokenSymbolCache[transfer.tokenContract]);
+      return;
+    }
     const api = createApi(network);
-    let mounted = true;
-    Promise.all(
-      unknown.map(async (id) => {
-        try {
-          const res = await api.callView(id, "symbol");
-          const sym = res.success ? new TextDecoder().decode(hexToBytes(res.return_data)) : "";
-          tokenNameCache[id] = sym || truncateHash(id, 4);
-        } catch {
-          tokenNameCache[id] = truncateHash(id, 4);
-        }
-      })
-    ).then(() => {
-      if (mounted) forceUpdate((n) => n + 1);
-    });
-    return () => { mounted = false; };
-  }, [contractIds.join(","), network]);
+    api.callView(transfer.tokenContract, "symbol").then((res) => {
+      if (res.success) {
+        const sym = new TextDecoder().decode(hexToBytes(res.return_data));
+        tokenSymbolCache[transfer.tokenContract!] = sym;
+        setSymbol(sym);
+      }
+    }).catch(() => {});
+  }, [transfer.tokenContract, network]);
 
-  return tokenNameCache;
+  if (transfer.tokenContract) {
+    return <>{formatNumber(Number(transfer.amount))} {symbol || "tokens"}</>;
+  }
+  return <>{formatBalance(transfer.amount)} SOLEN</>;
 }
 
 interface TransactionsTableProps {
@@ -59,14 +55,6 @@ interface TransactionsTableProps {
 }
 
 export function TransactionsTable({ transactions, compact, accountFilter }: TransactionsTableProps) {
-  // Collect all token contract IDs for name lookup.
-  const tokenContracts = transactions
-    .flatMap((tx) => {
-      const t = getTransferInfo(tx.events, tx.sender);
-      return t?.tokenContract ? [t.tokenContract] : [];
-    })
-    .filter((v, i, a) => a.indexOf(v) === i);
-  const tokenNames = useTokenNames(tokenContracts);
   if (compact) {
     return (
       <div className="divide-y divide-gray-100">
@@ -155,9 +143,7 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
               <div className="text-right">
                 {transfer && (
                   <p className={`text-sm font-medium ${transfer.tokenContract ? "text-purple-700" : "text-gray-900"}`}>
-                    {transfer.tokenContract
-                      ? `${formatNumber(Number(transfer.amount))} ${tokenNames[transfer.tokenContract] || "tokens"}`
-                      : `${formatBalance(transfer.amount)} SOLEN`}
+                    <TokenAmount transfer={transfer} />
                   </p>
                 )}
                 {reward && (
@@ -291,9 +277,7 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
                     <span className="text-amber-700" title={`${rewardCount} payouts`}>+{formatBalance(reward.amount)} SOLEN</span>
                   ) : transfer ? (
                     <span className={transfer.tokenContract ? "text-purple-700" : "text-gray-900"}>
-                      {transfer.tokenContract
-                        ? `${formatNumber(Number(transfer.amount))} tokens`
-                        : `${formatBalance(transfer.amount)} SOLEN`}
+                      <TokenAmount transfer={transfer} />
                     </span>
                   ) : stake ? (
                     <span className={isDelegate ? "text-blue-700" : "text-orange-700"}>
