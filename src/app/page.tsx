@@ -113,6 +113,12 @@ export default function HomePage() {
                 </div>
               </div>
               <div>
+                <div className="text-indigo-200 text-xs uppercase tracking-wide">Total Staked</div>
+                <div className="text-lg sm:text-xl font-bold">
+                  {formatBalance(chainStatus.total_staked)} <span className="text-sm font-normal text-indigo-200">SOLEN</span>
+                </div>
+              </div>
+              <div>
                 <div className="text-indigo-200 text-xs uppercase tracking-wide">Circulating Supply</div>
                 <div className="text-lg sm:text-xl font-bold">
                   {formatBalance(chainStatus.total_circulation)} <span className="text-sm font-normal text-indigo-200">SOLEN</span>
