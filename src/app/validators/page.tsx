@@ -61,10 +61,11 @@ export default function ValidatorsPage() {
                 <tr className="border-b border-gray-200 text-left text-gray-500 bg-gray-50/50">
                   <th className="px-6 py-3 font-medium">#</th>
                   <th className="px-6 py-3 font-medium">Validator</th>
-                  <th className="px-6 py-3 font-medium">Stake</th>
+                  <th className="px-6 py-3 font-medium">Self Stake</th>
+                  <th className="px-6 py-3 font-medium">Delegated</th>
                   <th className="px-6 py-3 font-medium">Stake %</th>
+                  <th className="px-6 py-3 font-medium">Commission</th>
                   <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium">Missed Blocks</th>
                 </tr>
               </thead>
               <tbody>
@@ -93,15 +94,25 @@ export default function ValidatorsPage() {
                           {i + 1}
                         </td>
                         <td className="px-6 py-4">
-                          <Link
-                            href={`/account/${v.id}`}
-                            className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
-                          >
-                            {truncateHash(v.id, 10)}
-                          </Link>
+                          <div className="flex items-center gap-1.5">
+                            <Link
+                              href={`/account/${v.id}`}
+                              className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
+                            >
+                              {truncateHash(v.id, 10)}
+                            </Link>
+                            {v.is_genesis && (
+                              <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-600">
+                                Genesis
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 font-medium text-gray-900">
-                          {formatBalance(v.stake)} SOLEN
+                          {formatBalance(v.self_stake || v.stake)} SOLEN
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">
+                          {formatBalance(v.delegated || "0")} SOLEN
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
@@ -116,16 +127,11 @@ export default function ValidatorsPage() {
                             </span>
                           </div>
                         </td>
+                        <td className="px-6 py-4 text-gray-700 font-medium">
+                          {v.commission_pct || "10.0%"}
+                        </td>
                         <td className="px-6 py-4">
                           <StatusBadge status={v.status} />
-                        </td>
-                        <td className="px-6 py-4 text-gray-600">
-                          {formatNumber(v.missed_blocks)}
-                          {v.missed_blocks >= 50 && (
-                            <span className="ml-1.5 text-xs text-red-500" title="At risk of slashing (threshold: 50)">
-                              (at risk)
-                            </span>
-                          )}
                         </td>
                       </tr>
                     );

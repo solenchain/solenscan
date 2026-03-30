@@ -64,8 +64,12 @@ export interface AccountInfo {
 export interface ValidatorInfo {
   id: string;
   stake: string;
+  self_stake: string;
+  delegated: string;
   status: "Active" | "Jailed" | "Exiting";
   missed_blocks: number;
+  commission_pct: string;
+  is_genesis: boolean;
 }
 
 export interface ValidatorSetResponse {
