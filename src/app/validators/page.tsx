@@ -102,7 +102,7 @@ export default function ValidatorsPage() {
                   <th className="px-6 py-3 font-medium">Self Stake</th>
                   <th className="px-6 py-3 font-medium">Stake %</th>
                   <th className="px-6 py-3 font-medium">Blocks</th>
-                  <th className="px-6 py-3 font-medium">Uptime</th>
+                  <th className="px-6 py-3 font-medium">Block Share</th>
                   <th className="px-6 py-3 font-medium">Commission</th>
                   <th className="px-6 py-3 font-medium">Status</th>
                 </tr>
@@ -168,21 +168,25 @@ export default function ValidatorsPage() {
                           {stat ? formatNumber(stat.blocks_proposed) : "—"}
                         </td>
                         <td className="px-6 py-4">
-                          {stat ? (
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-gray-100 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full ${
-                                    stat.uptime_pct > 15 ? "bg-green-500" : stat.uptime_pct > 5 ? "bg-yellow-500" : "bg-red-500"
-                                  }`}
-                                  style={{ width: `${Math.min(stat.uptime_pct * (100 / (100 / data.active_count)), 100)}%` }}
-                                />
+                          {stat ? (() => {
+                            const expected = 100 / data.active_count;
+                            const ratio = stat.uptime_pct / expected;
+                            const color = ratio > 0.8 ? "bg-green-500" : ratio > 0.5 ? "bg-yellow-500" : "bg-red-500";
+                            return (
+                              <div className="flex items-center gap-2">
+                                <div className="w-16 bg-gray-100 rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full ${color}`}
+                                    style={{ width: `${Math.min(ratio * 100, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-gray-600 text-xs">
+                                  {stat.uptime_pct.toFixed(1)}%
+                                  <span className="text-gray-400 ml-0.5">/ {expected.toFixed(0)}%</span>
+                                </span>
                               </div>
-                              <span className="text-gray-600 text-xs">
-                                {stat.uptime_pct.toFixed(1)}%
-                              </span>
-                            </div>
-                          ) : (
+                            );
+                          })() : (
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
