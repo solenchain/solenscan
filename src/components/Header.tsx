@@ -15,6 +15,7 @@ const navItems = [
   { href: "/events", label: "Events" },
   { href: "/validators", label: "Validators" },
   { href: "/contracts", label: "Contracts" },
+  { href: "/governance", label: "Governance" },
 ];
 
 export function Header() {

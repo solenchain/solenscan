@@ -97,6 +97,11 @@ export function createApi(network: NetworkConfig) {
     getValidators: () =>
       fetchExplorer<ValidatorSetResponse>(id, "api/validators"),
 
+    getGovernanceProposals: () =>
+      rpcCall<{ id: number; proposer: string; action: string; description: string; status: string; voting_end_epoch: number; execute_after_epoch: number; total_for: string; total_against: string; vote_count: number }[]>(
+        id, "solen_getGovernanceProposals"
+      ),
+
     getValidatorStats: () =>
       fetchExplorer<{ validator: string; blocks_proposed: number; last_proposed_height: number; uptime_pct: number }[]>(
         id, "api/validators/stats"
