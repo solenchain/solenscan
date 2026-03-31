@@ -207,7 +207,7 @@ export default function AccountPage() {
               </p>
             )
           ) : activeTab === "contract" ? (
-            <ContractTab contractId={accountId} />
+            <ContractTab contractId={accountId} account={account} />
           ) : (
             account && (
               <div className="space-y-0">
@@ -241,8 +241,19 @@ interface TokenMeta {
   totalSupply: string;
 }
 
-function ContractTab({ contractId }: { contractId: string }) {
+interface AbiEvent {
+  topic: string;
+  data: string;
+}
+
+interface ContractAbi {
+  methods: AbiMethod[];
+  events: AbiEvent[];
+}
+
+function ContractTab({ contractId, account }: { contractId: string; account: AccountInfo | null }) {
   const { network } = useNetwork();
+  const [abi, setAbi] = useState<ContractAbi | null>(null);
   const [methods, setMethods] = useState<AbiMethod[]>([]);
   const [method, setMethod] = useState("");
   const [args, setArgs] = useState("");
@@ -255,14 +266,22 @@ function ContractTab({ contractId }: { contractId: string }) {
   useEffect(() => {
     const api = createApi(network);
 
-    // Try to load ABI.
+    // Try to load ABI (supports old array format and new object format).
     api.callView(contractId, "abi").then((res) => {
       if (res.success && res.return_data) {
         try {
           const json = new TextDecoder().decode(hexToBytes(res.return_data));
-          const parsed = JSON.parse(json) as AbiMethod[];
-          setMethods(parsed.filter((m) => !m.mutates && m.name !== "abi"));
-          if (!method) setMethod(parsed.find((m) => !m.mutates && m.name !== "abi")?.name || "");
+          const parsed = JSON.parse(json);
+          let allMethods: AbiMethod[];
+          if (Array.isArray(parsed)) {
+            allMethods = parsed;
+            setAbi({ methods: parsed, events: [] });
+          } else {
+            allMethods = parsed.methods || [];
+            setAbi({ methods: allMethods, events: parsed.events || [] });
+          }
+          setMethods(allMethods.filter((m: AbiMethod) => !m.mutates && m.name !== "abi"));
+          if (!method) setMethod(allMethods.find((m: AbiMethod) => !m.mutates && m.name !== "abi")?.name || "");
         } catch { /* not valid ABI */ }
       }
     }).catch(() => {});
@@ -439,6 +458,112 @@ function ContractTab({ contractId }: { contractId: string }) {
           </div>
         )}
       </div>
+
+      {/* Write contract */}
+      {abi && abi.methods.filter((m) => m.mutates && m.name !== "abi" && m.name !== "init").length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Write Contract</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            To call write methods, use the CLI:
+          </p>
+          <div className="space-y-2">
+            {abi.methods
+              .filter((m) => m.mutates && m.name !== "abi" && m.name !== "init")
+              .map((m) => (
+                <div key={m.name} className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-sm font-medium text-gray-900">{m.name}</span>
+                    <span className="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">write</span>
+                  </div>
+                  {m.args && (
+                    <p className="text-xs text-gray-500 mb-2">Args: {m.args.replace(/\+/g, " + ")}</p>
+                  )}
+                  <code className="block text-xs bg-gray-900 text-green-400 p-2 rounded font-mono break-all">
+                    solen --chain-id 9000 call &lt;key&gt; {contractId.slice(0, 16)}... {m.name}{m.args ? " --args <hex>" : ""}
+                  </code>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Events ABI */}
+      {abi && abi.events.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Events</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <th className="pb-2 pr-4 font-medium">Topic</th>
+                  <th className="pb-2 font-medium">Data Format</th>
+                </tr>
+              </thead>
+              <tbody>
+                {abi.events.map((e, i) => (
+                  <tr key={i} className="border-b border-gray-100">
+                    <td className="py-2 pr-4">
+                      <span className="font-mono text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded">{e.topic}</span>
+                    </td>
+                    <td className="py-2 font-mono text-xs text-gray-600">{e.data.replace(/\+/g, " + ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Source code */}
+      <SourceCode contractId={contractId} codeHash={account?.code_hash || ""} />
+    </div>
+  );
+}
+
+function SourceCode({ contractId, codeHash }: { contractId: string; codeHash: string }) {
+  const { network } = useNetwork();
+  const [source, setSource] = useState<{ source_code: string; language: string; compiler_version: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!codeHash || codeHash === "0".repeat(64)) { setLoading(false); return; }
+    const api = createApi(network);
+    api.getContractSource(codeHash).then((res) => {
+      setSource(res);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [codeHash, network]);
+
+  if (loading) return null;
+
+  if (!source) {
+    return (
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Source Code</h3>
+        <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-center">
+          <p className="text-sm text-gray-500 mb-2">Source code not published</p>
+          <p className="text-xs text-gray-400">
+            Contract deployers can publish source via the API:
+          </p>
+          <code className="block text-xs bg-gray-900 text-green-400 p-2 rounded font-mono mt-2 text-left">
+            POST /api/contracts/{codeHash.slice(0, 16)}../source
+          </code>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-900">Source Code</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">Published</span>
+          <span className="text-xs text-gray-400">{source.language} · {source.compiler_version}</span>
+        </div>
+      </div>
+      <pre className="rounded-lg bg-gray-900 text-gray-100 p-4 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto">
+        {source.source_code}
+      </pre>
     </div>
   );
 }
