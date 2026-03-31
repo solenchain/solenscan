@@ -20,7 +20,7 @@ export default function AccountPage() {
   const [txs, setTxs] = useState<IndexedTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"txs" | "contract" | "info">("txs");
+  const [activeTab, setActiveTab] = useState<"txs" | "contract" | "holders" | "info">("txs");
   const [tokenBalances, setTokenBalances] = useState<{ contract: string; name: string; symbol: string; balance: string }[]>([]);
   const [isValidator, setIsValidator] = useState<{ active: boolean; genesis: boolean } | null>(null);
 
@@ -199,7 +199,7 @@ export default function AccountPage() {
           <div className="flex gap-0">
             {[
               { id: "txs" as const, label: `Transactions (${txs.length})` },
-              ...(isContract ? [{ id: "contract" as const, label: "Contract" }] : []),
+              ...(isContract ? [{ id: "contract" as const, label: "Contract" }, { id: "holders" as const, label: "Holders" }] : []),
               { id: "info" as const, label: "Details" },
             ].map((tab) => (
               <button
@@ -228,6 +228,8 @@ export default function AccountPage() {
             )
           ) : activeTab === "contract" ? (
             <ContractTab contractId={accountId} account={account} />
+          ) : activeTab === "holders" ? (
+            <HoldersTab contractId={accountId} />
           ) : (
             account && (
               <div className="space-y-0">
@@ -584,6 +586,113 @@ function SourceCode({ contractId, codeHash }: { contractId: string; codeHash: st
       <pre className="rounded-lg bg-gray-900 text-gray-100 p-4 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto">
         {source.source_code}
       </pre>
+    </div>
+  );
+}
+
+function HoldersTab({ contractId }: { contractId: string }) {
+  const { network } = useNetwork();
+  const [holders, setHolders] = useState<{ address: string; balance: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const api = createApi(network);
+
+    api.getTokenHolders(contractId).then(async (addresses) => {
+      if (!mounted || addresses.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      const results = await Promise.all(
+        addresses.map(async (addr) => {
+          try {
+            const res = await api.callView(contractId, "balance_of", addr);
+            if (res.success && res.return_data.length >= 32) {
+              const bal = bytesToU128(hexToBytes(res.return_data));
+              if (bal > BigInt(0)) {
+                return { address: addr, balance: bal.toString() };
+              }
+            }
+          } catch {}
+          return null;
+        })
+      );
+
+      if (mounted) {
+        const valid = results
+          .filter((r): r is NonNullable<typeof r> => r !== null)
+          .sort((a, b) => {
+            const ba = BigInt(a.balance);
+            const bb = BigInt(b.balance);
+            if (bb > ba) return 1;
+            if (bb < ba) return -1;
+            return 0;
+          });
+        setHolders(valid);
+        setLoading(false);
+      }
+    }).catch(() => setLoading(false));
+
+    return () => { mounted = false; };
+  }, [network, contractId]);
+
+  if (loading) return <div className="py-8 text-center text-gray-400">Loading holders...</div>;
+
+  if (holders.length === 0) {
+    return <div className="py-8 text-center text-gray-400">No holders found</div>;
+  }
+
+  const totalSupply = holders.reduce((sum, h) => sum + BigInt(h.balance), BigInt(0));
+
+  return (
+    <div>
+      <p className="text-sm text-gray-500 mb-4">{holders.length} holder{holders.length !== 1 ? "s" : ""}</p>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 text-left text-gray-500">
+            <th className="pb-3 pr-4 font-medium">#</th>
+            <th className="pb-3 pr-4 font-medium">Address</th>
+            <th className="pb-3 pr-4 font-medium text-right">Balance</th>
+            <th className="pb-3 font-medium text-right">Share</th>
+          </tr>
+        </thead>
+        <tbody>
+          {holders.map((h, i) => {
+            const pct = totalSupply > BigInt(0)
+              ? Number((BigInt(h.balance) * BigInt(10000)) / totalSupply) / 100
+              : 0;
+            return (
+              <tr key={h.address} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-3 pr-4 text-gray-400">{i + 1}</td>
+                <td className="py-3 pr-4">
+                  <Link
+                    href={`/account/${h.address}`}
+                    className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
+                  >
+                    {truncateHash(h.address, 10)}
+                  </Link>
+                </td>
+                <td className="py-3 pr-4 text-right font-mono text-gray-900">
+                  {formatNumber(Number(h.balance))}
+                </td>
+                <td className="py-3 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <div className="w-16 bg-gray-100 rounded-full h-2">
+                      <div
+                        className="bg-purple-500 h-2 rounded-full"
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 w-12 text-right">{pct.toFixed(1)}%</span>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

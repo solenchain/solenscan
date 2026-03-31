@@ -113,6 +113,9 @@ export function createApi(network: NetworkConfig) {
     getContracts: () =>
       fetchExplorer<string[]>(id, "api/contracts"),
 
+    getTokenHolders: (contractId: string) =>
+      fetchExplorer<string[]>(id, `api/contracts/${contractId}/holders`),
+
     getContractSource: (codeHash: string) =>
       fetchExplorer<{ code_hash: string; source_code: string; language: string; compiler_version: string; published_at: number } | null>(
         id, `api/contracts/${codeHash}/source`
