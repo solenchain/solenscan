@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { usePolling } from "@/hooks/useApi";
 import { useNetwork } from "@/context/NetworkContext";
@@ -68,6 +68,15 @@ export default function HomePage() {
   const { data: blocks, loading: blocksLoading, error: blocksError } = usePolling<IndexedBlock[]>(blocksFetcher);
   const { data: txs } = usePolling<IndexedTx[]>(txsFetcher);
   const { data: validators } = usePolling<ValidatorSetResponse>(validatorsFetcher);
+
+  // Fetch block 1 once for genesis time.
+  const [genesisTime, setGenesisTime] = useState<number | null>(null);
+  useEffect(() => {
+    const api = createApi(network);
+    api.getBlock(1).then((b) => {
+      if (b) setGenesisTime(b.timestamp_ms);
+    }).catch(() => {});
+  }, [network]);
 
   const tps = useTps(blocks);
   const error = statusError || blocksError;
@@ -221,7 +230,7 @@ export default function HomePage() {
       {chainStatus && (
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold text-gray-900 mb-3">Chain Overview</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 text-sm">
             <div>
               <span className="text-gray-500 text-xs">Chain ID</span>
               <p className="font-semibold text-gray-900 mt-1">
@@ -253,9 +262,15 @@ export default function HomePage() {
               </p>
             </div>
             <div>
-              <span className="text-gray-500 text-xs">State Root</span>
-              <p className="font-mono text-[10px] text-gray-600 mt-1 break-all">
-                {chainStatus.latest_state_root.slice(0, 20)}...
+              <span className="text-gray-500 text-xs">Genesis</span>
+              <p className="text-gray-900 mt-1 text-xs">
+                {genesisTime ? new Date(genesisTime).toLocaleDateString() : "—"}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 text-xs">Uptime</span>
+              <p className="font-semibold text-gray-900 mt-1">
+                {genesisTime ? formatUptime(Date.now() - genesisTime) : "—"}
               </p>
             </div>
           </div>
@@ -263,6 +278,17 @@ export default function HomePage() {
       )}
     </div>
   );
+}
+
+function formatUptime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m`;
+  return `${seconds}s`;
 }
 
 function BlockIcon() {
