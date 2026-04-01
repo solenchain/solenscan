@@ -24,21 +24,33 @@ export function BlocksTable({ blocks, compact }: BlocksTableProps) {
                   href={`/block/${block.height}`}
                   className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
                 >
-                  {formatNumber(block.height)}
+                  #{formatNumber(block.height)}
                 </Link>
                 <p className="text-xs text-gray-400">{timeAgo(block.timestamp_ms)}</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">
-                {block.tx_count} txn{block.tx_count !== 1 ? "s" : ""}
-              </p>
-              <Link
-                href={`/account/${block.proposer}`}
-                className="text-xs text-gray-400 hover:text-indigo-600 font-mono"
-              >
-                {truncateHash(block.proposer, 4)}
-              </Link>
+            <div className="flex items-center gap-4">
+              <div className="text-center hidden sm:block">
+                <p className="text-xs text-gray-600">{block.epoch}</p>
+                <p className="text-[10px] text-gray-400">epoch</p>
+              </div>
+              <div className="text-center">
+                <Link
+                  href={`/account/${block.proposer}`}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-mono"
+                >
+                  {truncateHash(block.proposer, 6)}
+                </Link>
+                <p className="text-[10px] text-gray-400">proposer</p>
+              </div>
+              <div className="text-center min-w-[32px]">
+                <p className="text-xs text-gray-600">{block.tx_count}</p>
+                <p className="text-[10px] text-gray-400">txns</p>
+              </div>
+              <div className="text-right min-w-[40px] hidden sm:block">
+                <p className="text-xs text-gray-600">{formatGas(block.gas_used)}</p>
+                <p className="text-[10px] text-gray-400">gas</p>
+              </div>
             </div>
           </div>
         ))}
