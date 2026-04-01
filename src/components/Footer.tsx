@@ -15,7 +15,7 @@ export function Footer() {
             <a href="https://x.com/solenchain" target="_blank" rel="noopener" className="hover:text-gray-600">X</a>
             <a href="https://discord.gg/j4Aj6Vcy" target="_blank" rel="noopener" className="hover:text-gray-600">Discord</a>
             <a href="https://t.me/solenchain" target="_blank" rel="noopener" className="hover:text-gray-600">Telegram</a>
-            <a href="https://github.com/solenchain" target="_blank" rel="noopener" className="hover:text-gray-600">GitHub</a>
+            <a href="https://github.com/Solen-Blockchain" target="_blank" rel="noopener" className="hover:text-gray-600">GitHub</a>
             <a href="https://docs.solenchain.io" target="_blank" rel="noopener" className="hover:text-gray-600">Docs</a>
           </div>
         </div>
