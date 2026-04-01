@@ -221,23 +221,41 @@ export default function HomePage() {
       {chainStatus && (
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold text-gray-900 mb-3">Chain Overview</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
             <div>
-              <span className="text-gray-500">State Root</span>
-              <p className="font-mono text-xs text-gray-700 mt-1 break-all">
-                {chainStatus.latest_state_root}
+              <span className="text-gray-500 text-xs">Chain ID</span>
+              <p className="font-semibold text-gray-900 mt-1">
+                {network.id === "testnet" ? "9000" : network.id === "mainnet" ? "1" : "1337"}
               </p>
             </div>
             <div>
-              <span className="text-gray-500">Finalized Height</span>
+              <span className="text-gray-500 text-xs">Finalized Height</span>
               <p className="font-semibold text-gray-900 mt-1">
                 {formatNumber(chainStatus.height)}
               </p>
             </div>
             <div>
-              <span className="text-gray-500">Mempool</span>
+              <span className="text-gray-500 text-xs">Block Time</span>
               <p className="font-semibold text-gray-900 mt-1">
-                {formatNumber(chainStatus.pending_ops)} pending operations
+                {blockTime ? `${blockTime}s` : "—"}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 text-xs">Validators</span>
+              <p className="font-semibold text-gray-900 mt-1">
+                {validators ? validators.active_count : "—"}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 text-xs">Mempool</span>
+              <p className="font-semibold text-gray-900 mt-1">
+                {formatNumber(chainStatus.pending_ops)}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 text-xs">State Root</span>
+              <p className="font-mono text-[10px] text-gray-600 mt-1 break-all">
+                {chainStatus.latest_state_root.slice(0, 20)}...
               </p>
             </div>
           </div>
