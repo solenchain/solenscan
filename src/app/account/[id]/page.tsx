@@ -579,13 +579,16 @@ function SourceCode({ contractId, codeHash }: { contractId: string; codeHash: st
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-900">Source Code</h3>
         <div className="flex items-center gap-2">
-          <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">Published</span>
+          <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-full font-medium ring-1 ring-yellow-600/20">Unverified</span>
           <span className="text-xs text-gray-400">{source.language} · {source.compiler_version}</span>
         </div>
       </div>
       <pre className="rounded-lg bg-gray-900 text-gray-100 p-4 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto">
         {source.source_code}
       </pre>
+      <p className="mt-2 text-xs text-gray-400">
+        This source code has not been verified against the on-chain bytecode. It was submitted by the deployer and may not match the actual contract.
+      </p>
     </div>
   );
 }
