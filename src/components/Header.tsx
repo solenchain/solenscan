@@ -16,6 +16,7 @@ const navItems = [
   { href: "/validators", label: "Validators" },
   { href: "/contracts", label: "Contracts" },
   { href: "/governance", label: "Governance" },
+  { href: "/rollups", label: "Rollups" },
 ];
 
 export function Header() {

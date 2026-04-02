@@ -82,6 +82,30 @@ export interface ValidatorSetResponse {
   total_count: number;
 }
 
+export interface IndexedRollup {
+  rollup_id: number;
+  name: string;
+  proof_type: string;
+  sequencer: string;
+  genesis_state_root: string;
+  registered_at_height: number;
+}
+
+export interface IndexedBatch {
+  rollup_id: number;
+  batch_index: number;
+  state_root: string;
+  data_hash: string;
+  verified: boolean;
+  block_height: number;
+  tx_index: number;
+}
+
+export interface RollupDetail extends IndexedRollup {
+  total_batches: number;
+  latest_batch: IndexedBatch | null;
+}
+
 export interface RpcResponse<T> {
   jsonrpc: string;
   id: number;

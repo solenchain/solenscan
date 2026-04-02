@@ -8,6 +8,9 @@ import {
   IndexedEvent,
   AccountInfo,
   ValidatorSetResponse,
+  IndexedRollup,
+  IndexedBatch,
+  RollupDetail,
   RpcResponse,
 } from "./types";
 
@@ -125,5 +128,14 @@ export function createApi(network: NetworkConfig) {
       fetchExplorer<{ code_hash: string; source_code: string; language: string; compiler_version: string; published_at: number; verified: boolean } | null>(
         id, `api/contracts/${codeHash}/source`
       ),
+
+    getRollups: () =>
+      fetchExplorer<IndexedRollup[]>(id, "api/rollups"),
+
+    getRollup: (rollupId: number) =>
+      fetchExplorer<RollupDetail | null>(id, `api/rollups/${rollupId}`),
+
+    getRollupBatches: (rollupId: number, limit = 20) =>
+      fetchExplorer<IndexedBatch[]>(id, `api/rollups/${rollupId}/batches?limit=${limit}`),
   };
 }
