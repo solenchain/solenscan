@@ -109,7 +109,7 @@ export default function RollupDetailPage() {
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wider text-gray-500">
                   <th className="px-5 py-3">Batch</th>
-                  <th className="px-5 py-3">Block</th>
+                  <th className="px-5 py-3">L1 Block</th>
                   <th className="px-5 py-3">State Root</th>
                   <th className="px-5 py-3">Data Hash</th>
                   <th className="px-5 py-3">Status</th>
@@ -122,9 +122,13 @@ export default function RollupDetailPage() {
                       #{formatNumber(b.batch_index)}
                     </td>
                     <td className="px-5 py-3">
-                      <Link href={`/block/${b.block_height}`} className="text-indigo-600 hover:text-indigo-800">
-                        #{formatNumber(b.block_height)}
-                      </Link>
+                      {b.block_height > 0 ? (
+                        <Link href={`/block/${b.block_height}`} className="text-indigo-600 hover:text-indigo-800">
+                          #{formatNumber(b.block_height)}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-5 py-3 font-mono text-xs text-gray-600">
                       {truncateHash(b.state_root, 10)}
