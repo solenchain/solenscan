@@ -152,7 +152,12 @@ export default function TxDetailPage() {
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden mb-6">
         <Row label="Transaction ID" value={`${tx.block_height}-${tx.index}`} />
         <Row label="Status">
-          {tx.success ? (
+          {tx.events.some((e) => e.topic === "intent_fulfilled") ? (
+            <span className="inline-flex items-center rounded-full bg-cyan-50 px-2.5 py-1 text-sm font-medium text-cyan-700 ring-1 ring-cyan-600/20">
+              <span className="mr-1.5 h-2 w-2 rounded-full bg-cyan-500" />
+              Intent Fulfilled
+            </span>
+          ) : tx.success ? (
             <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-1 text-sm font-medium text-green-700 ring-1 ring-green-600/20">
               <span className="mr-1.5 h-2 w-2 rounded-full bg-green-500" />
               Success
@@ -184,7 +189,19 @@ export default function TxDetailPage() {
         </Row>
         {(() => {
           const transfer = getTransferInfo(tx.events, tx.sender);
+          const tipEvent = tx.events.find((e) => e.topic === "solver_tip" && e.data.length >= 96);
+          const tipTo = tipEvent ? tipEvent.data.slice(0, 64) : null;
+          const tipAmount = tipEvent ? parseLeU128(tipEvent.data.slice(64, 96)) : null;
+          const feeEvent = tx.events.find((e) => e.topic === "fee");
+          const feeAmount = feeEvent ? parseLeU128(feeEvent.data.slice(0, 32)) : null;
+
           if (transfer) {
+            // Compute total cost to sender.
+            const transferBig = BigInt(transfer.amount);
+            const tipBig = tipAmount ? BigInt(tipAmount) : BigInt(0);
+            const feeBig = feeAmount ? BigInt(feeAmount) : BigInt(0);
+            const totalCost = transferBig + tipBig + feeBig;
+
             return (
               <>
                 <Row label="To">
@@ -218,6 +235,31 @@ export default function TxDetailPage() {
                     </>
                   )}
                 </Row>
+                {tipTo && tipAmount && (
+                  <Row label="Solver Tip">
+                    <span className="text-sm font-semibold text-cyan-700">
+                      {formatBalance(tipAmount)} SOLEN
+                    </span>
+                    <span className="ml-2 text-sm text-gray-500">
+                      to{" "}
+                      <Link href={`/account/${tipTo}`} className="text-indigo-600 hover:text-indigo-800 font-mono">
+                        {truncateHash(tipTo, 8)}
+                      </Link>
+                    </span>
+                  </Row>
+                )}
+                {(tipBig > BigInt(0) || feeBig > BigInt(0)) && !transfer.tokenContract && (
+                  <Row label="Total Cost">
+                    <span className="text-sm font-semibold text-gray-900">
+                      {formatBalance(totalCost.toString())} SOLEN
+                    </span>
+                    <span className="ml-2 text-xs text-gray-400">
+                      ({formatBalance(transfer.amount)} transfer
+                      {tipBig > BigInt(0) ? ` + ${formatBalance(tipAmount!)} tip` : ""}
+                      {feeBig > BigInt(0) ? ` + ${formatBalance(feeAmount!)} fee` : ""})
+                    </span>
+                  </Row>
+                )}
               </>
             );
           }
@@ -319,15 +361,21 @@ export default function TxDetailPage() {
               const isDelegatorReward = event.topic === "delegator_reward";
               const stake = (event.topic === "delegate" || event.topic === "undelegate") ? parseStakeEvent(event.data) : null;
               const isDelegate = event.topic === "delegate";
+              const isSolverTip = event.topic === "solver_tip" && event.data.length >= 96;
+              const solverTipTo = isSolverTip ? event.data.slice(0, 64) : null;
+              const solverTipAmt = isSolverTip ? parseLeU128(event.data.slice(64, 96)) : null;
+              const isIntentFulfilled = event.topic === "intent_fulfilled";
               return (
               <div key={i} className="px-6 py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
-                        event.topic === "epoch_reward"
+                        event.topic === "epoch_reward" || event.topic === "delegator_reward"
                           ? "bg-amber-50 text-amber-700"
-                          : "bg-purple-50 text-purple-700"
+                          : event.topic === "solver_tip" || event.topic === "intent_fulfilled"
+                            ? "bg-cyan-50 text-cyan-700"
+                            : "bg-purple-50 text-purple-700"
                       }`}>
                         {event.topic}
                       </span>
@@ -413,7 +461,36 @@ export default function TxDetailPage() {
                         </div>
                       </div>
                     )}
-                    {!transfer && !reward && !stake && event.data && event.data !== "" && event.data !== "00" && (
+                    {isSolverTip && solverTipTo && solverTipAmt && (
+                      <div className="mt-2 rounded-lg bg-cyan-50 p-3 space-y-1.5">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 w-16">Solver:</span>
+                          <Link
+                            href={`/account/${solverTipTo}`}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 font-mono"
+                          >
+                            {truncateHash(solverTipTo, 12)}
+                          </Link>
+                          <CopyButton text={solverTipTo} />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 w-16">Tip:</span>
+                          <span className="text-sm font-medium text-cyan-700">{formatBalance(solverTipAmt)} SOLEN</span>
+                          <span className="text-xs text-gray-400 ml-1">(raw: {solverTipAmt})</span>
+                        </div>
+                      </div>
+                    )}
+                    {isIntentFulfilled && (
+                      <div className="mt-2 rounded-lg bg-cyan-50 p-3">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 w-16">Intent ID:</span>
+                          <span className="text-sm font-medium text-cyan-700">
+                            #{event.data.length >= 16 ? parseInt(parseLeU128(event.data.slice(0, 16))) : event.data}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {!transfer && !reward && !stake && !isSolverTip && !isIntentFulfilled && event.data && event.data !== "" && event.data !== "00" && (
                       <div className="mt-2 rounded-lg bg-gray-50 p-3">
                         <span className="text-xs text-gray-500">Data:</span>
                         <p className="text-xs font-mono text-gray-700 mt-0.5 break-all">{event.data}</p>
