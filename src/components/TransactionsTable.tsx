@@ -75,13 +75,17 @@ function TokenAmount({ transfer }: { transfer: { amount: string; tokenContract?:
   return <>{formatBalance(transfer.amount)} SOLEN</>;
 }
 
-function parseMintAmount(hex: string): string {
+function parseLeU128(hex: string): string {
   const bytes = hexToBytes(hex);
   let value = BigInt(0);
   for (let i = Math.min(bytes.length, 16) - 1; i >= 0; i--) {
     value = (value << BigInt(8)) | BigInt(bytes[i]);
   }
   return value.toString();
+}
+
+function parseMintAmount(hex: string): string {
+  return parseLeU128(hex);
 }
 
 interface TransactionsTableProps {
@@ -119,6 +123,13 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
           const isStake = stake !== null;
           const isDelegate = stakeEvent?.topic === "delegate";
 
+          // Intent fulfillment detection.
+          const isIntent = tx.events.some((e) => e.topic === "intent_fulfilled");
+          const solverTipEvent = tx.events.find((e) => e.topic === "solver_tip");
+          const solverTip = solverTipEvent && solverTipEvent.data.length >= 96
+            ? { solver: solverTipEvent.data.slice(0, 64), amount: parseLeU128(solverTipEvent.data.slice(64, 96)) }
+            : null;
+
           // Parse mint events (new format: to[32]+amount[16]=96 hex, old: amount[16]=32 hex)
           const mintEvent = !transfer ? tx.events.find((e) => e.topic === "mint" && e.data.length >= 32 && !e.emitter.startsWith("ffffffff")) : null;
           const mintAmount = mintEvent
@@ -133,13 +144,15 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
             >
               <div className="flex items-center gap-3">
                 <div className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-mono ${
-                  isReward
-                    ? "bg-amber-50 text-amber-600"
-                    : (transfer?.tokenContract || mintAmount)
-                      ? "bg-purple-50 text-purple-600"
-                      : tx.success ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                  isIntent
+                    ? "bg-cyan-50 text-cyan-600"
+                    : isReward
+                      ? "bg-amber-50 text-amber-600"
+                      : (transfer?.tokenContract || mintAmount)
+                        ? "bg-purple-50 text-purple-600"
+                        : tx.success ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
                 }`}>
-                  {isReward ? "⛏" : (transfer?.tokenContract || mintAmount) ? "TK" : "Tx"}
+                  {isIntent ? "⚡" : isReward ? "⛏" : (transfer?.tokenContract || mintAmount) ? "TK" : "Tx"}
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
@@ -149,6 +162,11 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
                     >
                       #{formatNumber(tx.block_height)}-{tx.index}
                     </Link>
+                    {isIntent && (
+                      <span className="inline-flex items-center rounded-md bg-cyan-50 px-1.5 py-0.5 text-xs font-medium text-cyan-700">
+                        Intent
+                      </span>
+                    )}
                     {isReward && (
                       <span className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700">
                         Reward
@@ -200,6 +218,11 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
                       <p className="text-xs text-gray-400">{rewardCount} payouts</p>
                     )}
                   </div>
+                )}
+                {solverTip && (
+                  <p className="text-xs text-cyan-600">
+                    Tip: {formatBalance(solverTip.amount)} SOLEN
+                  </p>
                 )}
                 {stake && (
                   <p className={`text-sm font-medium ${isDelegate ? "text-blue-700" : "text-orange-700"}`}>
@@ -264,6 +287,12 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
             const stakeEvent = tx.events.find((e) => e.topic === "delegate" || e.topic === "undelegate");
             const stake = stakeEvent ? parseStakeEvent(stakeEvent.data) : null;
             const isDelegate = stakeEvent?.topic === "delegate";
+
+            const isIntent = tx.events.some((e) => e.topic === "intent_fulfilled");
+            const solverTipEvt = tx.events.find((e) => e.topic === "solver_tip");
+            const solverTip = solverTipEvt && solverTipEvt.data.length >= 96
+              ? { solver: solverTipEvt.data.slice(0, 64), amount: parseLeU128(solverTipEvt.data.slice(64, 96)) }
+              : null;
 
             const mintEvt = !transfer ? tx.events.find((e) => e.topic === "mint" && e.data.length >= 32 && !e.emitter.startsWith("ffffffff")) : null;
             const mintAmt = mintEvt
@@ -333,9 +362,14 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
                   {reward ? (
                     <span className="text-amber-700" title={`${rewardCount} payouts`}>+{formatBalance(reward.amount)} SOLEN</span>
                   ) : transfer ? (
-                    <span className={transfer.tokenContract ? "text-purple-700" : "text-gray-900"}>
-                      <TokenAmount transfer={transfer} />
-                    </span>
+                    <div>
+                      <span className={transfer.tokenContract ? "text-purple-700" : "text-gray-900"}>
+                        <TokenAmount transfer={transfer} />
+                      </span>
+                      {solverTip && (
+                        <div className="text-xs text-cyan-600">Tip: {formatBalance(solverTip.amount)} SOLEN</div>
+                      )}
+                    </div>
                   ) : stake ? (
                     <span className={isDelegate ? "text-blue-700" : "text-orange-700"}>
                       {isDelegate ? "Stake " : "Unstake "}{formatBalance(stake.amount)} SOLEN
@@ -349,7 +383,11 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
                   )}
                 </td>
                 <td className="py-3 pr-4">
-                  {tx.success ? (
+                  {isIntent ? (
+                    <span className="inline-flex items-center rounded-full bg-cyan-50 px-2 py-0.5 text-xs font-medium text-cyan-700 ring-1 ring-cyan-600/20">
+                      Intent
+                    </span>
+                  ) : tx.success ? (
                     <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-600/20">
                       Success
                     </span>
