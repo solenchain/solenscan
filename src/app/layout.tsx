@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "SolenScan — Solen Blockchain Explorer",
     description: "Explore blocks, transactions, accounts, validators, contracts, and rollups on the Solen blockchain.",
     siteName: "SolenScan",
-    images: [{ url: "/logo.png", width: 512, height: 512, alt: "SolenScan" }],
+    images: [{ url: "https://solenscan.io/logo.png", width: 512, height: 512, alt: "SolenScan" }],
   },
   twitter: {
     card: "summary",
