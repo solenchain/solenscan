@@ -16,10 +16,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SolenScan - Solen Blockchain Explorer",
-  description: "Block explorer for the Solen blockchain network. View blocks, transactions, accounts, and events.",
+  title: "SolenScan — Solen Blockchain Explorer",
+  description: "Block explorer for the Solen blockchain. View blocks, transactions, accounts, validators, contracts, rollups, and governance proposals.",
+  keywords: ["Solen", "blockchain", "explorer", "block explorer", "transactions", "validators", "rollups"],
+  authors: [{ name: "Solen Foundation" }],
   icons: {
     icon: "/favicon.png",
+  },
+  openGraph: {
+    type: "website",
+    url: "https://solenscan.io",
+    title: "SolenScan — Solen Blockchain Explorer",
+    description: "Explore blocks, transactions, accounts, validators, contracts, and rollups on the Solen blockchain.",
+    siteName: "SolenScan",
+    images: [{ url: "/logo.png", width: 512, height: 512, alt: "SolenScan" }],
+  },
+  twitter: {
+    card: "summary",
+    site: "@solenchain",
+    title: "SolenScan — Solen Blockchain Explorer",
+    description: "Explore blocks, transactions, accounts, validators, contracts, and rollups on the Solen blockchain.",
+    images: ["/logo.png"],
   },
 };
 
