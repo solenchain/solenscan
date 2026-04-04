@@ -5,13 +5,23 @@ export interface ChainStatus {
   total_events: number;
 }
 
+export interface ChainConfig {
+  block_time_ms: number;
+  min_validator_stake: string;
+  unbonding_period_epochs: number;
+  epoch_length: number;
+  base_fee_per_gas: string;
+  burn_rate_bps: number;
+}
+
 export interface RpcChainStatus {
   height: number;
-  latest_state_root: string;
+  state_root: string;
   pending_ops: number;
   total_allocation: string;
   total_staked: string;
   total_circulation: string;
+  config?: ChainConfig;
 }
 
 export interface IndexedBlock {

@@ -226,6 +226,52 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Governance parameters */}
+      {chainStatus?.config && (
+        <div className="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 p-5 shadow-sm">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Network Parameters</h2>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Configurable via governance proposals</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+            <div>
+              <span className="text-gray-500 dark:text-gray-400 text-xs">Block Time</span>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-1">
+                {(chainStatus.config.block_time_ms / 1000).toFixed(1)}s
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 dark:text-gray-400 text-xs">Min Validator Stake</span>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-1">
+                {formatBalance(chainStatus.config.min_validator_stake)} SOLEN
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 dark:text-gray-400 text-xs">Unbonding Period</span>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-1">
+                {chainStatus.config.unbonding_period_epochs} epochs
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 dark:text-gray-400 text-xs">Epoch Length</span>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-1">
+                {chainStatus.config.epoch_length} blocks
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 dark:text-gray-400 text-xs">Base Fee</span>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-1">
+                {chainStatus.config.base_fee_per_gas === "0" ? "None" : formatBalance(chainStatus.config.base_fee_per_gas)}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-500 dark:text-gray-400 text-xs">Fee Burn Rate</span>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-1">
+                {(chainStatus.config.burn_rate_bps / 100).toFixed(0)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chain overview card */}
       {chainStatus && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 p-5 shadow-sm">
