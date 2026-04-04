@@ -202,31 +202,6 @@ export default function AccountPage() {
         </div>
       )}
 
-      {/* Account details */}
-      {account && (
-        <div className="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Details</h3>
-          </div>
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            <div className="flex flex-col sm:flex-row px-5 py-3 gap-1 sm:gap-4">
-              <span className="text-xs text-gray-500 dark:text-gray-400 sm:w-32 shrink-0">Account ID</span>
-              <div className="flex items-center gap-1 min-w-0">
-                <span className="font-mono text-sm text-gray-900 dark:text-gray-100 break-all">{displayId}</span>
-                <CopyButton text={displayId} />
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row px-5 py-3 gap-1 sm:gap-4">
-              <span className="text-xs text-gray-500 dark:text-gray-400 sm:w-32 shrink-0">Public Key</span>
-              <div className="flex items-center gap-1 min-w-0">
-                <span className="font-mono text-xs text-gray-600 dark:text-gray-400 break-all">{publicKeyHex}</span>
-                <CopyButton text={publicKeyHex} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Token balances */}
       {tokenBalances.length > 0 && (
         <div className="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 p-5 shadow-sm">
@@ -312,7 +287,8 @@ export default function AccountPage() {
           ) : (
             account && (
               <div className="space-y-0">
-                <DetailRow label="Account ID" mono>{accountId}</DetailRow>
+                <DetailRow label="Account ID" mono>{displayId}</DetailRow>
+                <DetailRow label="Public Key" mono>{publicKeyHex}</DetailRow>
                 <DetailRow label="Account Type">
                   {isContract ? "Smart Account (has deployed code)" : "Standard Account (no code)"}
                 </DetailRow>
