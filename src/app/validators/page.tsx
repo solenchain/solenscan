@@ -169,8 +169,9 @@ export default function ValidatorsPage() {
                         </td>
                         <td className="px-6 py-4">
                           {stat ? (() => {
-                            const expected = 100 / data.active_count;
-                            const ratio = stat.uptime_pct / expected;
+                            // Expected block share is proportional to stake weight, not equal split
+                            const expected = pct;
+                            const ratio = expected > 0 ? stat.uptime_pct / expected : 0;
                             const color = ratio > 0.8 ? "bg-green-500" : ratio > 0.5 ? "bg-yellow-500" : "bg-red-500";
                             return (
                               <div className="flex items-center gap-2">
@@ -182,12 +183,12 @@ export default function ValidatorsPage() {
                                 </div>
                                 <span className="text-gray-600 dark:text-gray-400 text-xs">
                                   {stat.uptime_pct.toFixed(1)}%
-                                  <span className="text-gray-400 dark:text-gray-500 ml-0.5">/ {expected.toFixed(0)}%</span>
+                                  <span className="text-gray-400 dark:text-gray-500 ml-0.5">/ {expected.toFixed(1)}%</span>
                                 </span>
                               </div>
                             );
                           })() : (
-                            <span className="text-gray-400 dark:text-gray-500 text-xs">—</span>
+                            <span className="text-gray-400 dark:text-gray-500 text-xs">--</span>
                           )}
                         </td>
                         <td className="px-6 py-4 text-gray-700 dark:text-gray-300 font-medium">
