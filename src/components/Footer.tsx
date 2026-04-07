@@ -13,7 +13,7 @@ export function Footer() {
           </div>
           <div className="flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
             <a href="https://x.com/solenchain" target="_blank" rel="noopener" className="hover:text-gray-600 dark:hover:text-gray-400">X</a>
-            <a href="https://discord.gg/j4Aj6Vcy" target="_blank" rel="noopener" className="hover:text-gray-600 dark:hover:text-gray-400">Discord</a>
+            <a href="https://discord.com/invite/QGxv8bebJc" target="_blank" rel="noopener" className="hover:text-gray-600 dark:hover:text-gray-400">Discord</a>
             <a href="https://t.me/solenblockchain" target="_blank" rel="noopener" className="hover:text-gray-600 dark:hover:text-gray-400">Telegram</a>
             <a href="https://github.com/Solen-Blockchain" target="_blank" rel="noopener" className="hover:text-gray-600 dark:hover:text-gray-400">GitHub</a>
             <a href="https://docs.solenchain.io" target="_blank" rel="noopener" className="hover:text-gray-600 dark:hover:text-gray-400">Docs</a>
