@@ -410,7 +410,7 @@ export default function TxDetailPage() {
                           <span className="text-xs text-gray-500 dark:text-gray-400 w-16">Amount:</span>
                           {transfer.tokenContract ? (
                             <>
-                              <span className="text-sm font-medium text-purple-700">{formatNumber(Number(transfer.amount))} <TokenSymbol contractId={transfer.tokenContract} /></span>
+                              <span className="text-sm font-medium text-purple-700"><TokenAmount amount={transfer.amount} contractId={transfer.tokenContract} /></span>
                               <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">(contract: {truncateHash(transfer.tokenContract, 6)})</span>
                             </>
                           ) : (
