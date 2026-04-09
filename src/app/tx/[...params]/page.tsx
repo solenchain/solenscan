@@ -78,6 +78,28 @@ function parseLeU128(hex: string): string {
   return value.toString();
 }
 
+// AMM event parsers (SolenSwap)
+interface AmmSwapInfo { direction: string; amountIn: string; amountOut: string; }
+interface AmmDepositInfo { token: string; account: string; amount: string; }
+interface AmmLiquidityInfo { solen: string; stt: string; lp: string; }
+
+function parseAmmSwap(data: string): AmmSwapInfo | null {
+  if (data.length < 66) return null;
+  const direction = data.slice(0, 2) === "00" ? "SOLEN → STT" : "STT → SOLEN";
+  return { direction, amountIn: parseLeU128(data.slice(2, 34)), amountOut: parseLeU128(data.slice(34, 66)) };
+}
+
+function parseAmmDeposit(data: string): AmmDepositInfo | null {
+  if (data.length < 98) return null;
+  const token = data.slice(0, 2) === "00" ? "SOLEN" : "STT";
+  return { token, account: hexToBase58(data.slice(2, 66)), amount: parseLeU128(data.slice(66, 98)) };
+}
+
+function parseAmmLiquidity(data: string): AmmLiquidityInfo | null {
+  if (data.length < 96) return null;
+  return { solen: parseLeU128(data.slice(0, 32)), stt: parseLeU128(data.slice(32, 64)), lp: parseLeU128(data.slice(64, 96)) };
+}
+
 function parseTxParams(segments: string[]): { height: number; index: number } | null {
   // /tx/384/0
   if (segments.length === 2) {
@@ -366,6 +388,12 @@ export default function TxDetailPage() {
               const solverTipTo = isSolverTip ? hexToBase58(event.data.slice(0, 64)) : null;
               const solverTipAmt = isSolverTip ? parseLeU128(event.data.slice(64, 96)) : null;
               const isIntentFulfilled = event.topic === "intent_fulfilled";
+              // AMM events
+              const ammSwap = event.topic === "swap" ? parseAmmSwap(event.data) : null;
+              const ammDeposit = event.topic === "deposit" ? parseAmmDeposit(event.data) : null;
+              const ammWithdraw = event.topic === "withdraw" ? parseAmmDeposit(event.data) : null;
+              const ammLiqAdded = event.topic === "liquidity_added" ? parseAmmLiquidity(event.data) : null;
+              const ammLiqRemoved = event.topic === "liquidity_removed" ? parseAmmLiquidity(event.data) : null;
               return (
               <div key={i} className="px-6 py-4">
                 <div className="flex items-start justify-between gap-4">
@@ -378,7 +406,13 @@ export default function TxDetailPage() {
                             ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700"
                             : event.topic === "solver_tip" || event.topic === "intent_fulfilled"
                               ? "bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700"
-                              : "bg-purple-50 dark:bg-purple-900/30 text-purple-700"
+                              : event.topic === "swap"
+                                ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700"
+                                : event.topic === "deposit" || event.topic === "withdraw"
+                                  ? "bg-green-50 dark:bg-green-900/30 text-green-700"
+                                  : event.topic === "liquidity_added" || event.topic === "liquidity_removed"
+                                    ? "bg-teal-50 dark:bg-teal-900/30 text-teal-700"
+                                    : "bg-purple-50 dark:bg-purple-900/30 text-purple-700"
                       }`}>
                         {event.topic}
                       </span>
@@ -512,7 +546,54 @@ export default function TxDetailPage() {
                         </div>
                       </div>
                     )}
-                    {!transfer && !reward && !stake && !slashData && !isSolverTip && !isIntentFulfilled && event.data && event.data !== "" && event.data !== "00" && (
+                    {ammSwap && (
+                      <div className="mt-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 space-y-1.5">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">{ammSwap.direction}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">In:</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatBalance(ammSwap.amountIn)} {ammSwap.direction.startsWith("SOLEN") ? "SOLEN" : "STT"}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">Out:</span>
+                          <span className="text-sm font-medium text-green-700 dark:text-green-400">{formatBalance(ammSwap.amountOut)} {ammSwap.direction.endsWith("STT") ? "STT" : "SOLEN"}</span>
+                        </div>
+                      </div>
+                    )}
+                    {(ammDeposit || ammWithdraw) && (
+                      <div className={`mt-2 rounded-lg p-3 space-y-1.5 ${ammWithdraw ? "bg-orange-50 dark:bg-orange-900/20" : "bg-green-50 dark:bg-green-900/20"}`}>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">{ammWithdraw ? "Withdraw:" : "Deposit:"}</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {formatBalance((ammDeposit || ammWithdraw)!.amount)} {(ammDeposit || ammWithdraw)!.token}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">Account:</span>
+                          <Link href={`/account/${(ammDeposit || ammWithdraw)!.account}`} className="text-xs text-indigo-600 hover:text-indigo-800 font-mono">
+                            {truncateHash((ammDeposit || ammWithdraw)!.account, 12)}
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                    {(ammLiqAdded || ammLiqRemoved) && (
+                      <div className={`mt-2 rounded-lg p-3 space-y-1.5 ${ammLiqRemoved ? "bg-red-50 dark:bg-red-900/20" : "bg-teal-50 dark:bg-teal-900/20"}`}>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">SOLEN:</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatBalance((ammLiqAdded || ammLiqRemoved)!.solen)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">STT:</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatBalance((ammLiqAdded || ammLiqRemoved)!.stt)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">LP Shares:</span>
+                          <span className="text-sm font-medium text-teal-700 dark:text-teal-400">{formatBalance((ammLiqAdded || ammLiqRemoved)!.lp)}</span>
+                        </div>
+                      </div>
+                    )}
+                    {!transfer && !reward && !stake && !slashData && !isSolverTip && !isIntentFulfilled && !ammSwap && !ammDeposit && !ammWithdraw && !ammLiqAdded && !ammLiqRemoved && event.data && event.data !== "" && event.data !== "00" && (
                       <div className="mt-2 rounded-lg bg-gray-50 dark:bg-slate-950 p-3">
                         <span className="text-xs text-gray-500 dark:text-gray-400">Data:</span>
                         <p className="text-xs font-mono text-gray-700 dark:text-gray-300 mt-0.5 break-all">{event.data}</p>
