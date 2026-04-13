@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { usePolling } from "@/hooks/useApi";
+import { useOnBlock } from "@/hooks/useApi";
+import { useBlockSubscription } from "@/hooks/useBlockSubscription";
 import { useNetwork } from "@/context/NetworkContext";
 import { createApi } from "@/lib/api";
 import { ChainStatus, RpcChainStatus, IndexedBlock, IndexedTx, ValidatorSetResponse } from "@/lib/types";
@@ -41,6 +42,7 @@ function useTps(blocks: IndexedBlock[] | null) {
 
 export default function HomePage() {
   const { network } = useNetwork();
+  const { blockTick } = useBlockSubscription();
 
   const statusFetcher = useCallback(
     (api: ReturnType<typeof createApi>) => api.getStatus(),
@@ -63,11 +65,11 @@ export default function HomePage() {
     []
   );
 
-  const { data: status, error: statusError } = usePolling<ChainStatus>(statusFetcher);
-  const { data: chainStatus } = usePolling<RpcChainStatus>(chainStatusFetcher);
-  const { data: blocks, loading: blocksLoading, error: blocksError } = usePolling<IndexedBlock[]>(blocksFetcher);
-  const { data: txs } = usePolling<IndexedTx[]>(txsFetcher);
-  const { data: validators } = usePolling<ValidatorSetResponse>(validatorsFetcher);
+  const { data: status, error: statusError } = useOnBlock<ChainStatus>(statusFetcher, blockTick);
+  const { data: chainStatus } = useOnBlock<RpcChainStatus>(chainStatusFetcher, blockTick);
+  const { data: blocks, loading: blocksLoading, error: blocksError } = useOnBlock<IndexedBlock[]>(blocksFetcher, blockTick);
+  const { data: txs } = useOnBlock<IndexedTx[]>(txsFetcher, blockTick);
+  const { data: validators } = useOnBlock<ValidatorSetResponse>(validatorsFetcher, blockTick);
 
   // Fetch block 1 once for genesis time.
   const [genesisTime, setGenesisTime] = useState<number | null>(null);

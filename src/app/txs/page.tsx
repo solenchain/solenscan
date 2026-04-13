@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useNetwork } from "@/context/NetworkContext";
+import { useBlockSubscription } from "@/hooks/useBlockSubscription";
 import { createApi } from "@/lib/api";
 import { IndexedTx } from "@/lib/types";
 import { TransactionsTable } from "@/components/TransactionsTable";
@@ -12,6 +13,7 @@ const PAGE_SIZE = 25;
 
 export default function TransactionsPage() {
   const { network } = useNetwork();
+  const { blockTick } = useBlockSubscription();
   const [txs, setTxs] = useState<IndexedTx[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -22,7 +24,7 @@ export default function TransactionsPage() {
     let mounted = true;
     const api = createApi(network);
 
-    async function fetch() {
+    async function doFetch() {
       try {
         const [data, status] = await Promise.all([
           api.getRecentTxs(PAGE_SIZE, page * PAGE_SIZE),
@@ -41,10 +43,9 @@ export default function TransactionsPage() {
     }
 
     setLoading(true);
-    fetch();
-    const id = setInterval(fetch, 5000);
-    return () => { mounted = false; clearInterval(id); };
-  }, [network, page]);
+    doFetch();
+    return () => { mounted = false; };
+  }, [network, page, blockTick]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">

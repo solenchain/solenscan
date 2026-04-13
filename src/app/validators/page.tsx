@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useNetwork } from "@/context/NetworkContext";
+import { useBlockSubscription } from "@/hooks/useBlockSubscription";
 import { createApi } from "@/lib/api";
 import { ValidatorSetResponse } from "@/lib/types";
 import { truncateHash, formatBalance, formatNumber } from "@/lib/utils";
@@ -17,6 +18,7 @@ interface ValidatorStat {
 
 export default function ValidatorsPage() {
   const { network } = useNetwork();
+  const { blockTick } = useBlockSubscription();
   const [data, setData] = useState<ValidatorSetResponse | null>(null);
   const [stats, setStats] = useState<Record<string, ValidatorStat>>({});
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export default function ValidatorsPage() {
     let mounted = true;
     const api = createApi(network);
 
-    async function fetch() {
+    async function doFetch() {
       try {
         const [validators, validatorStats] = await Promise.all([
           api.getValidators(),
@@ -48,10 +50,9 @@ export default function ValidatorsPage() {
       }
     }
 
-    fetch();
-    const id = setInterval(fetch, 5000);
-    return () => { mounted = false; clearInterval(id); };
-  }, [network]);
+    doFetch();
+    return () => { mounted = false; };
+  }, [network, blockTick]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useNetwork } from "@/context/NetworkContext";
+import { useBlockSubscription } from "@/hooks/useBlockSubscription";
 import { createApi } from "@/lib/api";
 import { RpcChainStatus } from "@/lib/types";
 import { truncateHash, formatNumber } from "@/lib/utils";
@@ -69,6 +70,7 @@ function parseAction(action: string): string {
 
 export default function GovernancePage() {
   const { network } = useNetwork();
+  const { blockTick } = useBlockSubscription();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [chainStatus, setChainStatus] = useState<RpcChainStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,7 @@ export default function GovernancePage() {
     let mounted = true;
     const api = createApi(network);
 
-    async function fetch() {
+    async function doFetch() {
       try {
         const [props, status] = await Promise.all([
           api.getGovernanceProposals(),
@@ -96,10 +98,9 @@ export default function GovernancePage() {
       }
     }
 
-    fetch();
-    const id = setInterval(fetch, 5000);
-    return () => { mounted = false; clearInterval(id); };
-  }, [network]);
+    doFetch();
+    return () => { mounted = false; };
+  }, [network, blockTick]);
 
   const currentEpoch = chainStatus ? Math.floor(chainStatus.height / 100) : 0;
 

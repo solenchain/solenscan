@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useNetwork } from "@/context/NetworkContext";
+import { useBlockSubscription } from "@/hooks/useBlockSubscription";
 import { createApi } from "@/lib/api";
 import { IntentInfo } from "@/lib/types";
 import { truncateHash, formatNumber, formatBalance } from "@/lib/utils";
@@ -21,6 +22,7 @@ interface FulfilledIntent {
 
 export default function IntentsPage() {
   const { network } = useNetwork();
+  const { blockTick } = useBlockSubscription();
   const [pending, setPending] = useState<IntentInfo[]>([]);
   const [fulfilled, setFulfilled] = useState<FulfilledIntent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,12 +45,8 @@ export default function IntentsPage() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
 
-    const interval = setInterval(() => {
-      api.getPendingIntents(50).then(setPending).catch(() => {});
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [network]);
+    return () => {};
+  }, [network, blockTick]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
