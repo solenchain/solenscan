@@ -170,7 +170,17 @@ export default function TxDetailPage() {
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden mb-6">
         <Row label="Transaction ID" value={`${tx.block_height}-${tx.index}`} />
         <Row label="Status">
-          {tx.events.some((e) => e.topic === "intent_fulfilled") ? (
+          {tx.events.some((e) => e.topic === "bridge_deposit") ? (
+            <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-sm font-medium text-indigo-700 ring-1 ring-indigo-600/20 dark:ring-indigo-400/20">
+              <span className="mr-1.5 h-2 w-2 rounded-full bg-indigo-500" />
+              Bridge Deposit
+            </span>
+          ) : tx.events.some((e) => e.topic === "bridge_release") ? (
+            <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-sm font-medium text-indigo-700 ring-1 ring-indigo-600/20 dark:ring-indigo-400/20">
+              <span className="mr-1.5 h-2 w-2 rounded-full bg-indigo-500" />
+              Bridge Release
+            </span>
+          ) : tx.events.some((e) => e.topic === "intent_fulfilled") ? (
             <span className="inline-flex items-center rounded-full bg-cyan-50 dark:bg-cyan-900/30 px-2.5 py-1 text-sm font-medium text-cyan-700 ring-1 ring-cyan-600/20 dark:ring-cyan-400/20">
               <span className="mr-1.5 h-2 w-2 rounded-full bg-cyan-500" />
               Intent Fulfilled
@@ -281,6 +291,71 @@ export default function TxDetailPage() {
               </>
             );
           }
+          // Bridge deposit: sender[32] + base_recipient[20] + amount[16]
+          const bridgeDepEvent = tx.events.find((e) => e.topic === "bridge_deposit" && e.data.length >= 136);
+          if (bridgeDepEvent) {
+            const sender = hexToBase58(bridgeDepEvent.data.slice(0, 64));
+            const baseRecipient = "0x" + bridgeDepEvent.data.slice(64, 104);
+            const amount = parseLeU128(bridgeDepEvent.data.slice(104, 136));
+            return (
+              <>
+                <Row label="Type">
+                  <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-sm font-medium text-indigo-700 ring-1 ring-indigo-600/20 dark:ring-indigo-400/20">
+                    Bridge Deposit (Solen → Base)
+                  </span>
+                </Row>
+                <Row label="Value">
+                  <span className="text-lg font-semibold text-indigo-700">
+                    {formatBalance(amount)} SOLEN
+                  </span>
+                  <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">(raw: {amount})</span>
+                </Row>
+                <Row label="Base Recipient">
+                  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{baseRecipient}</span>
+                  <CopyButton text={baseRecipient} />
+                </Row>
+                {feeAmount && (
+                  <Row label="Fee">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{formatBalance(feeAmount)} SOLEN</span>
+                  </Row>
+                )}
+              </>
+            );
+          }
+
+          // Bridge release: recipient[32] + amount[16] + base_tx_hash[32]
+          const bridgeRelEvent = tx.events.find((e) => e.topic === "bridge_release" && e.data.length >= 96);
+          if (bridgeRelEvent) {
+            const recipient = hexToBase58(bridgeRelEvent.data.slice(0, 64));
+            const amount = parseLeU128(bridgeRelEvent.data.slice(64, 96));
+            return (
+              <>
+                <Row label="Type">
+                  <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-sm font-medium text-indigo-700 ring-1 ring-indigo-600/20 dark:ring-indigo-400/20">
+                    Bridge Release (Base → Solen)
+                  </span>
+                </Row>
+                <Row label="To">
+                  <Link href={`/account/${recipient}`} className="text-indigo-600 hover:text-indigo-800 font-mono text-sm">
+                    {recipient}
+                  </Link>
+                  <CopyButton text={recipient} />
+                </Row>
+                <Row label="Value">
+                  <span className="text-lg font-semibold text-indigo-700">
+                    {formatBalance(amount)} SOLEN
+                  </span>
+                  <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">(raw: {amount})</span>
+                </Row>
+                {feeAmount && (
+                  <Row label="Fee">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{formatBalance(feeAmount)} SOLEN</span>
+                  </Row>
+                )}
+              </>
+            );
+          }
+
           // Mint event: new format to[32]+amount[16] (96 hex) or old format amount[16] (32 hex)
           const mintEvent = tx.events.find((e) => e.topic === "mint" && e.data.length >= 32);
           if (mintEvent) {
