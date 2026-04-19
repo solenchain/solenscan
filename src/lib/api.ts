@@ -111,6 +111,11 @@ export function createApi(network: NetworkConfig) {
         id, "api/validators/stats"
       ),
 
+    getRichList: (limit = 100, offset = 0) =>
+      fetchExplorer<{ rank: number; address: string; balance: string; staked: string; total: string }[]>(
+        id, `api/richlist?limit=${limit}&offset=${offset}`
+      ),
+
     callView: (contractId: string, method: string, argsHex?: string) =>
       rpcCall<{ success: boolean; return_data: string; gas_used: number; error?: string }>(
         id, "solen_callView", { contract_id: contractId, method, args: argsHex || null }

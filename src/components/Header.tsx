@@ -13,6 +13,7 @@ const navItems = [
   { href: "/txs", label: "Transactions" },
   { href: "/events", label: "Events" },
   { href: "/validators", label: "Validators" },
+  { href: "/richlist", label: "Rich List" },
   { href: "/contracts", label: "Contracts" },
   { href: "/governance", label: "Governance" },
   { href: "/rollups", label: "Rollups" },
