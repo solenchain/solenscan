@@ -13,6 +13,7 @@ interface RichListEntry {
   balance: string;
   staked: string;
   total: string;
+  label?: string;
 }
 
 export default function RichListPage() {
@@ -48,7 +49,7 @@ export default function RichListPage() {
   if (error) return <ErrorMessage message={error} />;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold">Rich List</h1>
       <p className="text-sm text-gray-400">Top accounts by total holdings (balance + staked)</p>
 
@@ -68,13 +69,24 @@ export default function RichListPage() {
               <tr key={entry.address} className="border-b border-gray-800/50 hover:bg-gray-800/30">
                 <td className="py-3 px-2 text-gray-400">{entry.rank}</td>
                 <td className="py-3 px-2">
-                  <Link
-                    href={`/account/${entry.address}`}
-                    className="text-emerald-400 hover:underline font-mono text-xs"
-                  >
-                    <span className="hidden sm:inline">{entry.address}</span>
-                    <span className="sm:hidden">{truncateHash(entry.address)}</span>
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/account/${entry.address}`}
+                      className="text-emerald-400 hover:underline font-mono text-xs"
+                    >
+                      <span className="hidden sm:inline">{entry.address}</span>
+                      <span className="sm:hidden">{truncateHash(entry.address)}</span>
+                    </Link>
+                    {entry.label && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        entry.label === "Validator"
+                          ? "bg-yellow-500/10 text-yellow-400"
+                          : "bg-blue-500/10 text-blue-400"
+                      }`}>
+                        {entry.label}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="py-3 px-2 text-right font-mono">
                   {formatBalance(entry.balance)}
