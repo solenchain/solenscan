@@ -13,6 +13,7 @@ const mainNavItems = [
   { href: "/txs", label: "Transactions" },
   { href: "/events", label: "Events" },
   { href: "/validators", label: "Validators" },
+  { href: "/stats", label: "Status" },
   { href: "/richlist", label: "Rich List" },
 ];
 

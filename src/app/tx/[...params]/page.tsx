@@ -28,13 +28,19 @@ function useTokenMeta(contractId: string) {
   const [decimals, setDecimals] = useState(tokenDecimalsCache[contractId] ?? 8);
 
   useEffect(() => {
+    if (!contractId) return;
     const api = createApi(network);
     if (!tokenSymbolCache[contractId]) {
       api.callView(contractId, "symbol").then((res) => {
         if (res.success) {
           const sym = new TextDecoder().decode(hexToBytes(res.return_data));
-          tokenSymbolCache[contractId] = sym;
-          setSymbol(sym);
+          // Contracts that don't implement `symbol` fall through to their
+          // default dispatcher which returns `err:unknown_method` via
+          // `sdk::return_value` — still success=true at the callView layer.
+          // Treat those as "no symbol".
+          const clean = sym.startsWith("err:") ? "" : sym;
+          tokenSymbolCache[contractId] = clean;
+          setSymbol(clean);
         }
       }).catch(() => {});
     } else {
@@ -56,6 +62,47 @@ function useTokenMeta(contractId: string) {
   return { symbol: symbol || "tokens", decimals };
 }
 
+// Cache: pair contract address → the SRC-20 contract it's bound to. Populated
+// by looking up the pair's `initialized` event (which encodes owner[32] +
+// token_contract[32]). Pair-template doesn't expose a `token_contract` view,
+// so the event lookup is the only dynamic path.
+const pairTokenCache: Record<string, string> = {};
+
+function usePairBoundToken(pairAddr: string): string {
+  const { network } = useNetwork();
+  const [tokenContract, setTokenContract] = useState(pairTokenCache[pairAddr] || "");
+
+  useEffect(() => {
+    if (!pairAddr || pairTokenCache[pairAddr]) {
+      if (pairTokenCache[pairAddr]) setTokenContract(pairTokenCache[pairAddr]);
+      return;
+    }
+    const url = `${network.explorerApiUrl}/api/events?contract=${encodeURIComponent(pairAddr)}&topic=initialized&limit=1`;
+    fetch(url)
+      .then((r) => r.ok ? r.json() : [])
+      .then((rows: { data?: string }[]) => {
+        const data = rows[0]?.data || "";
+        // event data = owner[32] || token_contract[32] in hex (128 chars total).
+        if (data.length >= 128) {
+          const tc = data.slice(64, 128);
+          pairTokenCache[pairAddr] = tc;
+          setTokenContract(tc);
+        }
+      })
+      .catch(() => {});
+  }, [pairAddr, network]);
+
+  return tokenContract;
+}
+
+/** Resolved symbol for a pair's bound token. Falls back to "TOKEN" pre-resolve. */
+function usePairTokenSymbol(pairAddr: string): string {
+  const tokenContract = usePairBoundToken(pairAddr);
+  const { symbol } = useTokenMeta(tokenContract);
+  if (!tokenContract) return "TOKEN";
+  return symbol === "tokens" ? "TOKEN" : symbol;
+}
+
 function TokenAmount({ amount, contractId }: { amount: string; contractId: string }) {
   const { symbol, decimals } = useTokenMeta(contractId);
   return <>{formatTokenBalance(amount, decimals)} {symbol}</>;
@@ -73,26 +120,102 @@ function parseLeU128(hex: string): string {
   return value.toString();
 }
 
-// AMM event parsers (SolenSwap)
-interface AmmSwapInfo { direction: string; amountIn: string; amountOut: string; }
-interface AmmDepositInfo { token: string; account: string; amount: string; }
-interface AmmLiquidityInfo { solen: string; stt: string; lp: string; }
+// AMM event parsers (SolenSwap). Direction/side bytes are returned raw so the
+// renderer can substitute the pair's actual token symbol (resolved dynamically
+// via the pair's `initialized` event) — no more hardcoded "STT".
+interface AmmSwapInfo { solenToToken: boolean; amountIn: string; amountOut: string; }
+interface AmmDepositInfo { isSolenSide: boolean; account: string; amount: string; }
+interface AmmLiquidityInfo { solen: string; token: string; lp: string; }
 
 function parseAmmSwap(data: string): AmmSwapInfo | null {
   if (data.length < 66) return null;
-  const direction = data.slice(0, 2) === "00" ? "SOLEN → STT" : "STT → SOLEN";
-  return { direction, amountIn: parseLeU128(data.slice(2, 34)), amountOut: parseLeU128(data.slice(34, 66)) };
+  return {
+    solenToToken: data.slice(0, 2) === "00",
+    amountIn: parseLeU128(data.slice(2, 34)),
+    amountOut: parseLeU128(data.slice(34, 66)),
+  };
 }
 
 function parseAmmDeposit(data: string): AmmDepositInfo | null {
   if (data.length < 98) return null;
-  const token = data.slice(0, 2) === "00" ? "SOLEN" : "STT";
-  return { token, account: hexToBase58(data.slice(2, 66)), amount: parseLeU128(data.slice(66, 98)) };
+  return {
+    isSolenSide: data.slice(0, 2) === "00",
+    account: hexToBase58(data.slice(2, 66)),
+    amount: parseLeU128(data.slice(66, 98)),
+  };
 }
 
 function parseAmmLiquidity(data: string): AmmLiquidityInfo | null {
   if (data.length < 96) return null;
-  return { solen: parseLeU128(data.slice(0, 32)), stt: parseLeU128(data.slice(32, 64)), lp: parseLeU128(data.slice(64, 96)) };
+  return { solen: parseLeU128(data.slice(0, 32)), token: parseLeU128(data.slice(32, 64)), lp: parseLeU128(data.slice(64, 96)) };
+}
+
+// ── AMM event cards ────────────────────────────────────────────────
+
+function AmmSwapCard({ pairAddr, info }: { pairAddr: string; info: AmmSwapInfo }) {
+  const sym = usePairTokenSymbol(pairAddr);
+  const inTicker = info.solenToToken ? "SOLEN" : sym;
+  const outTicker = info.solenToToken ? sym : "SOLEN";
+  return (
+    <div className="mt-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 space-y-1.5">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+          {inTicker} → {outTicker}
+        </span>
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-gray-500 dark:text-gray-400 w-16">In:</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatBalance(info.amountIn)} {inTicker}</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-gray-500 dark:text-gray-400 w-16">Out:</span>
+        <span className="text-sm font-medium text-green-700 dark:text-green-400">{formatBalance(info.amountOut)} {outTicker}</span>
+      </div>
+    </div>
+  );
+}
+
+function AmmDepositCard({ pairAddr, info, kind }: { pairAddr: string; info: AmmDepositInfo; kind: "deposit" | "withdraw" }) {
+  const sym = usePairTokenSymbol(pairAddr);
+  const ticker = info.isSolenSide ? "SOLEN" : sym;
+  const isWithdraw = kind === "withdraw";
+  return (
+    <div className={`mt-2 rounded-lg p-3 space-y-1.5 ${isWithdraw ? "bg-orange-50 dark:bg-orange-900/20" : "bg-green-50 dark:bg-green-900/20"}`}>
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-gray-500 dark:text-gray-400 w-16">{isWithdraw ? "Withdraw:" : "Deposit:"}</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {formatBalance(info.amount)} {ticker}
+        </span>
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-gray-500 dark:text-gray-400 w-16">Account:</span>
+        <Link href={`/account/${info.account}`} className="text-xs text-indigo-600 hover:text-indigo-800 font-mono">
+          {truncateHash(info.account, 12)}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function AmmLiquidityCard({ pairAddr, info, kind }: { pairAddr: string; info: AmmLiquidityInfo; kind: "added" | "removed" }) {
+  const sym = usePairTokenSymbol(pairAddr);
+  const removed = kind === "removed";
+  return (
+    <div className={`mt-2 rounded-lg p-3 space-y-1.5 ${removed ? "bg-red-50 dark:bg-red-900/20" : "bg-teal-50 dark:bg-teal-900/20"}`}>
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-gray-500 dark:text-gray-400 w-16">SOLEN:</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatBalance(info.solen)}</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-gray-500 dark:text-gray-400 w-16">{sym}:</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatBalance(info.token)}</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-gray-500 dark:text-gray-400 w-16">LP Shares:</span>
+        <span className="text-sm font-medium text-teal-700 dark:text-teal-400">{formatBalance(info.lp)}</span>
+      </div>
+    </div>
+  );
 }
 
 function parseTxParams(segments: string[]): { height: number; index: number } | null {
@@ -629,53 +752,11 @@ export default function TxDetailPage() {
                         </div>
                       </div>
                     )}
-                    {ammSwap && (
-                      <div className="mt-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 space-y-1.5">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">{ammSwap.direction}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">In:</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatBalance(ammSwap.amountIn)} {ammSwap.direction.startsWith("SOLEN") ? "SOLEN" : "STT"}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">Out:</span>
-                          <span className="text-sm font-medium text-green-700 dark:text-green-400">{formatBalance(ammSwap.amountOut)} {ammSwap.direction.endsWith("STT") ? "STT" : "SOLEN"}</span>
-                        </div>
-                      </div>
-                    )}
-                    {(ammDeposit || ammWithdraw) && (
-                      <div className={`mt-2 rounded-lg p-3 space-y-1.5 ${ammWithdraw ? "bg-orange-50 dark:bg-orange-900/20" : "bg-green-50 dark:bg-green-900/20"}`}>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">{ammWithdraw ? "Withdraw:" : "Deposit:"}</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {formatBalance((ammDeposit || ammWithdraw)!.amount)} {(ammDeposit || ammWithdraw)!.token}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">Account:</span>
-                          <Link href={`/account/${(ammDeposit || ammWithdraw)!.account}`} className="text-xs text-indigo-600 hover:text-indigo-800 font-mono">
-                            {truncateHash((ammDeposit || ammWithdraw)!.account, 12)}
-                          </Link>
-                        </div>
-                      </div>
-                    )}
-                    {(ammLiqAdded || ammLiqRemoved) && (
-                      <div className={`mt-2 rounded-lg p-3 space-y-1.5 ${ammLiqRemoved ? "bg-red-50 dark:bg-red-900/20" : "bg-teal-50 dark:bg-teal-900/20"}`}>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">SOLEN:</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatBalance((ammLiqAdded || ammLiqRemoved)!.solen)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">STT:</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatBalance((ammLiqAdded || ammLiqRemoved)!.stt)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-16">LP Shares:</span>
-                          <span className="text-sm font-medium text-teal-700 dark:text-teal-400">{formatBalance((ammLiqAdded || ammLiqRemoved)!.lp)}</span>
-                        </div>
-                      </div>
-                    )}
+                    {ammSwap && <AmmSwapCard pairAddr={event.emitter} info={ammSwap} />}
+                    {ammDeposit && <AmmDepositCard pairAddr={event.emitter} info={ammDeposit} kind="deposit" />}
+                    {ammWithdraw && <AmmDepositCard pairAddr={event.emitter} info={ammWithdraw} kind="withdraw" />}
+                    {ammLiqAdded && <AmmLiquidityCard pairAddr={event.emitter} info={ammLiqAdded} kind="added" />}
+                    {ammLiqRemoved && <AmmLiquidityCard pairAddr={event.emitter} info={ammLiqRemoved} kind="removed" />}
                     {bridgeDeposit && (
                       <div className="mt-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 p-3 space-y-1.5">
                         <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Bridge Deposit (Solen &rarr; Base)</div>

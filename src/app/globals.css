@@ -8,11 +8,62 @@
 }
 
 .dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
+  --background: #11141b;
+  --foreground: #ecedf2;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* ===== Dark mode accent: indigo → gold (matches solenchain.io) ===== */
+/* These selectors only fire when `.dark` is on a parent, so light mode
+   keeps its indigo accent for legibility on light backgrounds. */
+.dark .text-indigo-600,
+.dark .dark\:text-indigo-600 { color: #f5a623; }
+
+.dark .text-indigo-400,
+.dark .dark\:text-indigo-400,
+.dark .text-indigo-300,
+.dark .dark\:text-indigo-300 { color: #ffd080; }
+
+.dark .text-indigo-700,
+.dark .dark\:text-indigo-700,
+.dark .text-indigo-800,
+.dark .dark\:text-indigo-800 { color: #c47d10; }
+
+.dark .hover\:text-indigo-700:hover,
+.dark .hover\:text-indigo-800:hover { color: #ffd080; }
+
+.dark .bg-indigo-500,
+.dark .dark\:bg-indigo-500,
+.dark .bg-indigo-600,
+.dark .dark\:bg-indigo-600 { background-color: #f5a623; }
+
+.dark .hover\:bg-indigo-700:hover,
+.dark .hover\:bg-indigo-600:hover { background-color: #ffd080; color: #11141b; }
+
+.dark .bg-indigo-50,
+.dark .dark\:bg-indigo-50,
+.dark .bg-indigo-100,
+.dark .dark\:bg-indigo-100 { background-color: rgba(245, 166, 35, 0.10); }
+
+.dark .bg-indigo-900,
+.dark .dark\:bg-indigo-900,
+.dark .bg-indigo-950,
+.dark .dark\:bg-indigo-950 { background-color: rgba(245, 166, 35, 0.15); }
+
+.dark .dark\:bg-indigo-900\/30,
+.dark .bg-indigo-900\/30 { background-color: rgba(245, 166, 35, 0.15); }
+
+.dark .hover\:bg-indigo-100:hover { background-color: rgba(245, 166, 35, 0.18); }
+
+.dark .border-indigo-300,
+.dark .dark\:border-indigo-300,
+.dark .border-indigo-500,
+.dark .dark\:border-indigo-500 { border-color: rgba(245, 166, 35, 0.4); }
+
+.dark .focus\:border-indigo-300:focus { border-color: rgba(245, 166, 35, 0.55); }
+.dark .focus\:ring-indigo-500\/30:focus { --tw-ring-color: rgba(245, 166, 35, 0.3); }
+.dark .ring-indigo-500\/30 { --tw-ring-color: rgba(245, 166, 35, 0.3); }
