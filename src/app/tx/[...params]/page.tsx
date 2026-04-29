@@ -218,17 +218,27 @@ function AmmLiquidityCard({ pairAddr, info, kind }: { pairAddr: string; info: Am
   );
 }
 
-function parseTxParams(segments: string[]): { height: number; index: number } | null {
+type TxLookup =
+  | { kind: "blockIndex"; height: number; index: number }
+  | { kind: "hash"; hash: string };
+
+function parseTxParams(segments: string[]): TxLookup | null {
+  // /tx/hash/<64-hex>
+  if (segments.length === 2 && segments[0] === "hash") {
+    const hex = segments[1].replace(/^0x/i, "").toLowerCase();
+    if (/^[0-9a-f]{64}$/.test(hex)) return { kind: "hash", hash: hex };
+    return null;
+  }
   // /tx/384/0
   if (segments.length === 2) {
     const height = Number(segments[0]);
     const index = Number(segments[1]);
-    if (!isNaN(height) && !isNaN(index)) return { height, index };
+    if (!isNaN(height) && !isNaN(index)) return { kind: "blockIndex", height, index };
   }
   // /tx/384-0
   if (segments.length === 1) {
     const match = segments[0].match(/^(\d+)-(\d+)$/);
-    if (match) return { height: Number(match[1]), index: Number(match[2]) };
+    if (match) return { kind: "blockIndex", height: Number(match[1]), index: Number(match[2]) };
   }
   return null;
 }
@@ -245,7 +255,7 @@ export default function TxDetailPage() {
 
   useEffect(() => {
     if (!txId) {
-      setError(`Invalid transaction ID "${segments.join("/")}". Use format: block-index (e.g. 384-0)`);
+      setError(`Invalid transaction ID "${segments.join("/")}". Use format: block-index (e.g. 384-0) or hash/<64-hex>`);
       setLoading(false);
       return;
     }
@@ -255,7 +265,9 @@ export default function TxDetailPage() {
     async function fetchTx() {
       try {
         const api = createApi(network);
-        const result = await api.getTx(txId!.height, txId!.index);
+        const result = txId!.kind === "hash"
+          ? await api.getTxByHash(txId!.hash)
+          : await api.getTx(txId!.height, txId!.index);
         if (mounted.current) {
           setTx(result);
           setError(null);
@@ -273,7 +285,7 @@ export default function TxDetailPage() {
     fetchTx();
     return () => { mounted.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [network, txId?.height, txId?.index]);
+  }, [network, txId?.kind === "hash" ? txId.hash : txId?.height, txId?.kind === "blockIndex" ? txId.index : undefined]);
 
   if (loading) return <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8"><Loading /></div>;
   if (error || !tx) {
@@ -292,6 +304,12 @@ export default function TxDetailPage() {
 
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden mb-6">
         <Row label="Transaction ID" value={`${tx.block_height}-${tx.index}`} />
+        {tx.tx_hash && (
+          <Row label="Tx Hash">
+            <span className="font-mono text-xs text-gray-700 dark:text-gray-300 break-all">{tx.tx_hash}</span>
+            <CopyButton text={tx.tx_hash} />
+          </Row>
+        )}
         <Row label="Status">
           {tx.events.some((e) => e.topic === "bridge_deposit") ? (
             <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-sm font-medium text-indigo-700 ring-1 ring-indigo-600/20 dark:ring-indigo-400/20">

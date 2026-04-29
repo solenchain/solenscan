@@ -177,7 +177,7 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
                 <div>
                   <div className="flex items-center gap-1.5">
                     <Link
-                      href={`/tx/${tx.block_height}/${tx.index}`}
+                      href={tx.tx_hash ? `/tx/hash/${tx.tx_hash}` : `/tx/${tx.block_height}/${tx.index}`}
                       className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
                     >
                       #{formatNumber(tx.block_height)}-{tx.index}
@@ -208,6 +208,17 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
                       </span>
                     )}
                   </div>
+                  {tx.tx_hash && (
+                    <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 font-mono">
+                      <Link
+                        href={`/tx/hash/${tx.tx_hash}`}
+                        className="hover:text-indigo-600"
+                        title={tx.tx_hash}
+                      >
+                        {truncateHash(tx.tx_hash, 6)}
+                      </Link>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
                     {isSlash && slash ? (
                       <>
@@ -312,6 +323,7 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
         <thead>
           <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-gray-500 dark:text-gray-400">
             <th className="pb-3 pr-4 font-medium">Txn</th>
+            <th className="pb-3 pr-4 font-medium">Tx Hash</th>
             <th className="pb-3 pr-4 font-medium">Block</th>
             <th className="pb-3 pr-4 font-medium">From</th>
             <th className="pb-3 pr-4 font-medium">To</th>
@@ -376,11 +388,24 @@ export function TransactionsTable({ transactions, compact, accountFilter }: Tran
               >
                 <td className="py-3 pr-4">
                   <Link
-                    href={`/tx/${tx.block_height}/${tx.index}`}
+                    href={tx.tx_hash ? `/tx/hash/${tx.tx_hash}` : `/tx/${tx.block_height}/${tx.index}`}
                     className="text-indigo-600 hover:text-indigo-800 font-medium"
                   >
                     {tx.block_height}-{tx.index}
                   </Link>
+                </td>
+                <td className="py-3 pr-4">
+                  {tx.tx_hash ? (
+                    <Link
+                      href={`/tx/hash/${tx.tx_hash}`}
+                      className="text-indigo-600 hover:text-indigo-800 font-mono text-xs"
+                      title={tx.tx_hash}
+                    >
+                      {truncateHash(tx.tx_hash, 6)}
+                    </Link>
+                  ) : (
+                    <span className="text-gray-400 dark:text-gray-500 text-xs">-</span>
+                  )}
                 </td>
                 <td className="py-3 pr-4">
                   <Link

@@ -77,6 +77,9 @@ export function createApi(network: NetworkConfig) {
     getTx: (blockHeight: number, index: number) =>
       fetchExplorer<IndexedTx>(id, `api/tx/${blockHeight}/${index}`),
 
+    getTxByHash: (txHash: string) =>
+      fetchExplorer<IndexedTx>(id, `api/tx/hash/${txHash.replace(/^0x/i, "").toLowerCase()}`),
+
     getBlockTxs: (blockHeight: number) =>
       fetchExplorer<IndexedTx[]>(id, `api/blocks/${blockHeight}/txs`),
 

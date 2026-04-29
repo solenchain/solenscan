@@ -21,7 +21,7 @@ export function SearchBar() {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search by block, tx (384-0), or account..."
+        placeholder="Search by block, tx (384-0 or hash), or account..."
         className="w-full sm:w-80 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-slate-950 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
       />
       <button
@@ -44,6 +44,14 @@ export function resolveSearch(q: string): string {
   // Block height: pure number
   if (/^\d+$/.test(q)) {
     return `/block/${q}`;
+  }
+  // Transaction hash: 64 hex chars, optional 0x prefix.
+  // Addresses also fit this pattern when in hex form, but they're 32 bytes
+  // and rarely pasted as raw hex (Base58 is ~44 chars). We resolve to /tx/hash/
+  // first; the page falls back to account lookup on 404.
+  const hex = q.replace(/^0x/i, "").toLowerCase();
+  if (/^[0-9a-f]{64}$/.test(hex)) {
+    return `/tx/hash/${hex}`;
   }
   // Account ID: hex or Base58 address
   return `/account/${q}`;
