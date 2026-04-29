@@ -57,9 +57,10 @@ export interface IndexedTx {
   gas_used: number;
   error: string | null;
   events: IndexedEvent[];
-  /** `blake3(sender ‖ nonce_le)`, hex-encoded. Same value RPC clients see as
-   *  `tx_hash` from `solen_submitOperationConfirm`. May be empty on records
-   *  produced by older indexer builds. */
+  /** `blake3(block_height_le ‖ tx_index_le ‖ sender ‖ nonce_le)`, hex-encoded.
+   *  Same value RPC clients see as `tx_hash` from `solen_submitOperationConfirm`.
+   *  May be empty on records produced by older indexer builds, or on backfill
+   *  paths where the block placement isn't known. */
   tx_hash?: string;
 }
 
